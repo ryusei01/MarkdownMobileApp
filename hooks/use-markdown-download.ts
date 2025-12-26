@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native";
 
 export type DownloadFormat = "markdown" | "pdf" | "html";
+export type DownloadMethod = "share" | "local";
 
 /**
  * Markdown ファイルのダウンロード機能を提供するフック
@@ -12,26 +13,56 @@ export function useMarkdownDownload() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ローカルダウンロードフォルダのパスを取得
+  const getDownloadPath = useCallback((): string => {
+    if (Platform.OS === "android") {
+      return `${FileSystem.documentDirectory}Downloads/`;
+    } else {
+      // iOS: Documents フォルダを使用
+      return `${FileSystem.documentDirectory}`;
+    }
+  }, []);
+
+  // ディレクトリが存在することを確認
+  const ensureDirectoryExists = useCallback(async (dirPath: string) => {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(dirPath);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
+      }
+    } catch (error) {
+      console.error("Failed to create directory:", error);
+    }
+  }, []);
+
   // Markdown 形式でダウンロード
   const downloadAsMarkdown = useCallback(
-    async (fileName: string, content: string) => {
+    async (fileName: string, content: string, method: DownloadMethod = "share") => {
       try {
         setDownloading(true);
         setError(null);
 
-        const fileUri = `${FileSystem.documentDirectory}${fileName}.md`;
+        const downloadPath = getDownloadPath();
+        const fileUri = `${downloadPath}${fileName}.md`;
+
+        await ensureDirectoryExists(downloadPath);
         await FileSystem.writeAsStringAsync(fileUri, content, {
           encoding: FileSystem.EncodingType.UTF8,
         });
 
-        // 共有ダイアログを表示
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: "text/markdown",
-            dialogTitle: "Markdownファイルを共有",
-          });
+        if (method === "share") {
+          // 共有ダイアログを表示
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: "text/markdown",
+              dialogTitle: "Markdownファイルを共有",
+            });
+          } else {
+            setError("ファイル共有機能が利用できません");
+          }
         } else {
-          setError("ファイル共有機能が利用できません");
+          // ローカル保存のみ
+          console.log("File saved to:", fileUri);
         }
 
         return fileUri;
@@ -43,32 +74,39 @@ export function useMarkdownDownload() {
         setDownloading(false);
       }
     },
-    []
+    [getDownloadPath, ensureDirectoryExists]
   );
 
   // HTML 形式でダウンロード
   const downloadAsHTML = useCallback(
-    async (fileName: string, content: string, title: string = fileName) => {
+    async (fileName: string, content: string, title: string = fileName, method: DownloadMethod = "share") => {
       try {
         setDownloading(true);
         setError(null);
 
         // シンプルな HTML に変換
         const htmlContent = convertMarkdownToHTML(content, title);
-        const fileUri = `${FileSystem.documentDirectory}${fileName}.html`;
+        const downloadPath = getDownloadPath();
+        const fileUri = `${downloadPath}${fileName}.html`;
 
+        await ensureDirectoryExists(downloadPath);
         await FileSystem.writeAsStringAsync(fileUri, htmlContent, {
           encoding: FileSystem.EncodingType.UTF8,
         });
 
-        // 共有ダイアログを表示
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: "text/html",
-            dialogTitle: "HTMLファイルを共有",
-          });
+        if (method === "share") {
+          // 共有ダイアログを表示
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: "text/html",
+              dialogTitle: "HTMLファイルを共有",
+            });
+          } else {
+            setError("ファイル共有機能が利用できません");
+          }
         } else {
-          setError("ファイル共有機能が利用できません");
+          // ローカル保存のみ
+          console.log("File saved to:", fileUri);
         }
 
         return fileUri;
@@ -80,29 +118,37 @@ export function useMarkdownDownload() {
         setDownloading(false);
       }
     },
-    []
+    [getDownloadPath, ensureDirectoryExists]
   );
 
   // テキスト形式でダウンロード（プレーンテキスト）
   const downloadAsText = useCallback(
-    async (fileName: string, content: string) => {
+    async (fileName: string, content: string, method: DownloadMethod = "share") => {
       try {
         setDownloading(true);
         setError(null);
 
-        const fileUri = `${FileSystem.documentDirectory}${fileName}.txt`;
+        const downloadPath = getDownloadPath();
+        const fileUri = `${downloadPath}${fileName}.txt`;
+
+        await ensureDirectoryExists(downloadPath);
         await FileSystem.writeAsStringAsync(fileUri, content, {
           encoding: FileSystem.EncodingType.UTF8,
         });
 
-        // 共有ダイアログを表示
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: "text/plain",
-            dialogTitle: "テキストファイルを共有",
-          });
+        if (method === "share") {
+          // 共有ダイアログを表示
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: "text/plain",
+              dialogTitle: "テキストファイルを共有",
+            });
+          } else {
+            setError("ファイル共有機能が利用できません");
+          }
         } else {
-          setError("ファイル共有機能が利用できません");
+          // ローカル保存のみ
+          console.log("File saved to:", fileUri);
         }
 
         return fileUri;
@@ -114,7 +160,7 @@ export function useMarkdownDownload() {
         setDownloading(false);
       }
     },
-    []
+    [getDownloadPath, ensureDirectoryExists]
   );
 
   return {
@@ -123,6 +169,7 @@ export function useMarkdownDownload() {
     downloadAsMarkdown,
     downloadAsHTML,
     downloadAsText,
+    getDownloadPath,
   };
 }
 

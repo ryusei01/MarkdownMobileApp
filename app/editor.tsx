@@ -80,7 +80,7 @@ export default function EditorScreen() {
     setActiveTab(tab);
   };
 
-  const handleDownload = async (format: "markdown" | "html" | "text") => {
+  const handleDownload = async (format: "markdown" | "html" | "text", method: "share" | "local") => {
     if (!file) return;
 
     try {
@@ -90,14 +90,16 @@ export default function EditorScreen() {
       const fileName = file.name.replace(/\.md$/, "");
 
       if (format === "markdown") {
-        await downloadAsMarkdown(fileName, content);
+        await downloadAsMarkdown(fileName, content, method);
       } else if (format === "html") {
-        await downloadAsHTML(fileName, content, file.name);
+        await downloadAsHTML(fileName, content, file.name, method);
       } else if (format === "text") {
-        await downloadAsText(fileName, content);
+        await downloadAsText(fileName, content, method);
       }
 
-      Alert.alert("成功", `${format.toUpperCase()} 形式でダウンロードしました`);
+      const methodLabel = method === "share" ? "共有" : "ローカル保存";
+      const formatLabel = format === "markdown" ? "Markdown" : format === "html" ? "HTML" : "テキスト";
+      Alert.alert("成功", `${formatLabel}形式で${methodLabel}しました`);
     } catch (error) {
       Alert.alert("エラー", "ダウンロードに失敗しました");
       console.error("Download failed:", error);
@@ -238,34 +240,77 @@ export default function EditorScreen() {
 
         {/* ダウンロードメニュー */}
         {showDownloadMenu && (
-          <View className="px-4 pb-3 gap-2 bg-surface border-t border-border">
-            <TouchableOpacity
-              onPress={() => handleDownload("markdown")}
-              disabled={downloading}
-              className="bg-background border border-border rounded-lg py-3 px-4"
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-foreground">Markdown形式</Text>
-              <Text className="text-xs text-muted mt-1">.md ファイル</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleDownload("html")}
-              disabled={downloading}
-              className="bg-background border border-border rounded-lg py-3 px-4"
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-foreground">HTML形式</Text>
-              <Text className="text-xs text-muted mt-1">.html ファイル</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleDownload("text")}
-              disabled={downloading}
-              className="bg-background border border-border rounded-lg py-3 px-4"
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-foreground">テキスト形式</Text>
-              <Text className="text-xs text-muted mt-1">.txt ファイル</Text>
-            </TouchableOpacity>
+          <View className="px-4 pb-3 gap-2 bg-surface border-t border-border max-h-96">
+            <ScrollView>
+              {/* Markdown形式 */}
+              <View className="mb-3">
+                <Text className="text-sm font-semibold text-foreground mb-2">Markdown形式</Text>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={() => handleDownload("markdown", "local")}
+                    disabled={downloading}
+                    className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-semibold text-foreground text-center">💾 ローカル保存</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDownload("markdown", "share")}
+                    disabled={downloading}
+                    className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-semibold text-foreground text-center">📤 共有</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* HTML形式 */}
+              <View className="mb-3">
+                <Text className="text-sm font-semibold text-foreground mb-2">HTML形式</Text>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={() => handleDownload("html", "local")}
+                    disabled={downloading}
+                    className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-semibold text-foreground text-center">💾 ローカル保存</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDownload("html", "share")}
+                    disabled={downloading}
+                    className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-semibold text-foreground text-center">📤 共有</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* テキスト形式 */}
+              <View>
+                <Text className="text-sm font-semibold text-foreground mb-2">テキスト形式</Text>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={() => handleDownload("text", "local")}
+                    disabled={downloading}
+                    className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-semibold text-foreground text-center">💾 ローカル保存</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDownload("text", "share")}
+                    disabled={downloading}
+                    className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-semibold text-foreground text-center">📤 共有</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
           </View>
         )}
       </View>
