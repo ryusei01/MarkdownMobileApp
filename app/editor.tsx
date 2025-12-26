@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { MarkdownPreview } from "@/components/markdown-preview";
+import { MarkdownSyntaxGuide } from "@/components/markdown-syntax-guide";
 import { useMarkdownFiles, type MarkdownFile } from "@/hooks/use-markdown-files";
 import { useMarkdownDownload } from "@/hooks/use-markdown-download";
 import { useColors } from "@/hooks/use-colors";
@@ -34,6 +35,7 @@ export default function EditorScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved" | "saving">("saved");
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [showSyntaxGuide, setShowSyntaxGuide] = useState(false);
 
   // ファイルを読み込む
   useEffect(() => {
@@ -149,6 +151,9 @@ export default function EditorScreen() {
               {file.name}
             </Text>
           </View>
+          <TouchableOpacity onPress={() => setShowSyntaxGuide(true)} className="p-2">
+            <Text className="text-lg">?️</Text>
+          </TouchableOpacity>
           <View className="items-end">
             <Text
               className="text-xs font-medium"
@@ -237,6 +242,12 @@ export default function EditorScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* 構文ガイドモーダル */}
+        <MarkdownSyntaxGuide
+          visible={showSyntaxGuide}
+          onClose={() => setShowSyntaxGuide(false)}
+        />
 
         {/* ダウンロードメニュー */}
         {showDownloadMenu && (
