@@ -151,10 +151,14 @@ export default function EditorScreen() {
               {file.name}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowSyntaxGuide(true)} className="p-2">
-            <Text className="text-lg">?️</Text>
+          <TouchableOpacity
+            onPress={() => setShowSyntaxGuide(true)}
+            className="px-3 py-2 rounded-lg bg-primary flex-row items-center gap-1"
+          >
+            <Text className="text-sm">📚</Text>
+            <Text className="text-xs font-semibold text-background">構文</Text>
           </TouchableOpacity>
-          <View className="items-end">
+          <View className="items-end ml-2">
             <Text
               className="text-xs font-medium"
               style={{ color: getSaveStatusColor() }}
