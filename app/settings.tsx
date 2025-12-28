@@ -23,14 +23,13 @@ import * as Haptics from "expo-haptics";
 /**
  * 設定画面
  * - 言語選択（日本語/英語）
- * - テーマモード選択（ライト/ダーク/自動）
  * - フォントサイズ調整（12-20px）
  * - アプリ情報表示
  */
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { settings, setThemeMode, setFontSize } = useThemeSettings();
+  const { settings, setFontSize } = useThemeSettings();
   const { t, language, setLanguage } = useLanguage();
   const [fontSize, setFontSizeLocal] = useState(settings.fontSize);
 
@@ -43,10 +42,6 @@ export default function SettingsScreen() {
     router.back();
   };
 
-  const handleThemeModeChange = (mode: "light" | "dark" | "auto") => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setThemeMode(mode);
-  };
 
   const handleFontSizeChange = (delta: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -118,79 +113,6 @@ export default function SettingsScreen() {
                 <Text className="text-base font-semibold text-foreground">{t("settings.english")}</Text>
                 {language === "en" && (
                   <Text className="text-lg text-primary" testID="settings-language-en-check">✓</Text>
-                )}
-              </View>
-            </Pressable>
-          </View>
-
-          {/* テーマ設定セクション */}
-          <View className="mb-6" testID="settings-theme-section">
-            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-theme-title">{t("settings.theme")}</Text>
-
-            {/* ライトモード */}
-            <Pressable
-              onPress={() => handleThemeModeChange("light")}
-              testID="settings-theme-light"
-              style={({ pressed }) => [
-                styles.settingItem,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: settings.mode === "light" ? colors.primary : colors.border,
-                  borderWidth: settings.mode === "light" ? 2 : 1,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-            >
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-foreground">{t("settings.lightMode")}</Text>
-                {settings.mode === "light" && (
-                  <Text className="text-lg text-primary" testID="settings-theme-light-check">✓</Text>
-                )}
-              </View>
-            </Pressable>
-
-            {/* ダークモード */}
-            <Pressable
-              onPress={() => handleThemeModeChange("dark")}
-              testID="settings-theme-dark"
-              style={({ pressed }) => [
-                styles.settingItem,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: settings.mode === "dark" ? colors.primary : colors.border,
-                  borderWidth: settings.mode === "dark" ? 2 : 1,
-                  opacity: pressed ? 0.7 : 1,
-                  marginTop: 8,
-                },
-              ]}
-            >
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-foreground">{t("settings.darkMode")}</Text>
-                {settings.mode === "dark" && (
-                  <Text className="text-lg text-primary" testID="settings-theme-dark-check">✓</Text>
-                )}
-              </View>
-            </Pressable>
-
-            {/* 自動モード */}
-            <Pressable
-              onPress={() => handleThemeModeChange("auto")}
-              testID="settings-theme-auto"
-              style={({ pressed }) => [
-                styles.settingItem,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: settings.mode === "auto" ? colors.primary : colors.border,
-                  borderWidth: settings.mode === "auto" ? 2 : 1,
-                  opacity: pressed ? 0.7 : 1,
-                  marginTop: 8,
-                },
-              ]}
-            >
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-foreground">{t("settings.autoMode")}</Text>
-                {settings.mode === "auto" && (
-                  <Text className="text-lg text-primary" testID="settings-theme-auto-check">✓</Text>
                 )}
               </View>
             </Pressable>

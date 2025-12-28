@@ -1,5 +1,10 @@
+/**
+ * カラーとフォントサイズを取得するフック
+ */
+
 import { Colors, type ColorScheme, type ThemeColorPalette } from "@/constants/theme";
 import { useColorScheme } from "./use-color-scheme";
+import { useThemeContext } from "@/lib/theme-provider";
 
 /**
  * Returns the current theme's color palette.
@@ -9,4 +14,13 @@ export function useColors(colorSchemeOverride?: ColorScheme): ThemeColorPalette 
   const colorSchema = useColorScheme();
   const scheme = (colorSchemeOverride ?? colorSchema ?? "light") as ColorScheme;
   return Colors[scheme];
+}
+
+/**
+ * 現在のフォントサイズを取得するフック
+ * @returns フォントサイズ（px単位）
+ */
+export function useFontSize(): number {
+  const { fontSize } = useThemeContext();
+  return fontSize;
 }

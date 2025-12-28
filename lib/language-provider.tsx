@@ -55,25 +55,41 @@ function getTranslation(
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const { settings, setLanguage, loading } = useLanguageSettings();
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/language-provider.tsx:57',message:'LanguageProvider entry',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+  try {
+    const { settings, setLanguage, loading } = useLanguageSettings();
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/language-provider.tsx:60',message:'useLanguageSettings result',data:{loading,language:settings.language},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
 
-  const t = (key: string, params?: Record<string, string>): string => {
-    const currentTranslations = translations[settings.language];
-    return getTranslation(currentTranslations, key, params);
-  };
+    const t = (key: string, params?: Record<string, string>): string => {
+      const currentTranslations = translations[settings.language];
+      return getTranslation(currentTranslations, key, params);
+    };
 
-  return (
-    <LanguageContext.Provider
-      value={{
-        language: settings.language,
-        t,
-        setLanguage,
-        loading,
-      }}
-    >
-      {children}
-    </LanguageContext.Provider>
-  );
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/language-provider.tsx:66',message:'LanguageProvider render',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    return (
+      <LanguageContext.Provider
+        value={{
+          language: settings.language,
+          t,
+          setLanguage,
+          loading,
+        }}
+      >
+        {children}
+      </LanguageContext.Provider>
+    );
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/language-provider.tsx:78',message:'LanguageProvider error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    throw error;
+  }
 }
 
 export function useLanguage() {

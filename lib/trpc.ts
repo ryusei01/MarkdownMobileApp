@@ -25,10 +25,21 @@ export const trpc = createTRPCReact<AppRouter>();
  * @returns 設定済みのtRPCクライアント
  */
 export function createTRPCClient() {
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/trpc.ts:27',message:'createTRPCClient entry',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  const apiBaseUrl = getApiBaseUrl();
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/trpc.ts:30',message:'getApiBaseUrl result',data:{apiBaseUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  const trpcUrl = `${apiBaseUrl}/api/trpc`;
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/trpc.ts:33',message:'tRPC URL constructed',data:{trpcUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
   return trpc.createClient({
     links: [
       httpBatchLink({
-        url: `${getApiBaseUrl()}/api/trpc`, // tRPCエンドポイントのURL
+        url: trpcUrl, // tRPCエンドポイントのURL
         // tRPC v11: transformerはhttpBatchLinkの中に配置する必要があります（ルートレベルではありません）
         transformer: superjson, // 日付やBigIntなどの特殊な型をシリアライズ
         /**
@@ -36,8 +47,21 @@ export function createTRPCClient() {
          * ネイティブプラットフォームではBearerトークンを設定
          */
         async headers() {
-          const token = await Auth.getSessionToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/trpc.ts:40',message:'getSessionToken called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          try {
+            const token = await Auth.getSessionToken();
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/trpc.ts:43',message:'getSessionToken result',data:{hasToken:!!token},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            return token ? { Authorization: `Bearer ${token}` } : {};
+          } catch (error) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/trpc.ts:46',message:'getSessionToken error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            return {};
+          }
         },
         /**
          * カスタムfetch関数

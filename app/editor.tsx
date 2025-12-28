@@ -23,7 +23,8 @@ import { MarkdownSyntaxGuide } from "@/components/markdown-syntax-guide";
 import { useMarkdownFilesUniversal } from "@/hooks/use-markdown-files-universal";
 import type { MarkdownFile } from "@/hooks/use-markdown-files";
 import { useMarkdownDownloadUniversal } from "@/hooks/use-markdown-download-universal";
-import { useColors } from "@/hooks/use-colors";
+import { useColors, useFontSize } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
 
@@ -43,6 +44,8 @@ export default function EditorScreen() {
   const router = useRouter();
   const { fileId } = useLocalSearchParams<{ fileId: string }>(); // URLパラメータからファイルIDを取得
   const colors = useColors();
+  const fontSize = useFontSize();
+  const colorScheme = useColorScheme();
   const { t } = useLanguage();
   
   // カスタムフック
@@ -315,10 +318,11 @@ export default function EditorScreen() {
               placeholderTextColor={colors.muted}
               multiline
               scrollEnabled
-              className="flex-1 px-4 py-3 text-base text-foreground bg-background"
+              className="flex-1 px-4 py-3 text-foreground bg-background"
               style={{
                 fontFamily: "monospace",
                 textAlignVertical: "top",
+                fontSize: fontSize,
               }}
               testID="editor-text-input"
             />
@@ -360,12 +364,12 @@ export default function EditorScreen() {
           testID="editor-rename-modal"
         >
           <View
-            className="flex-1 items-center justify-center"
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+            className="flex-1 items-center justify-center px-4"
+            style={{ backgroundColor: colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)" }}
             testID="editor-rename-modal-backdrop"
           >
             <View
-              className="w-80 rounded-lg p-6 gap-4"
+              className="w-full max-w-sm rounded-lg p-6 gap-4"
               style={{ backgroundColor: colors.surface }}
               testID="editor-rename-modal-content"
             >

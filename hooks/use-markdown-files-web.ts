@@ -24,6 +24,11 @@ export function useMarkdownFilesWeb() {
 
   // IndexedDB の初期化
   const initDB = useCallback(async (): Promise<IDBDatabase> => {
+    // IndexedDBが利用可能かチェック
+    if (typeof indexedDB === "undefined") {
+      throw new Error("IndexedDB is not available");
+    }
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, 1);
 
@@ -79,11 +84,24 @@ export function useMarkdownFilesWeb() {
 
   // DB 初期化と ファイル読み込み
   useEffect(() => {
+    // IndexedDBが利用可能かチェック（モバイルでは利用不可）
+    if (typeof indexedDB === "undefined") {
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const initialize = async () => {
       try {
         const database = await initDB();
         setDb(database);
       } catch (err) {
+        // モバイルではIndexedDBが利用できないため、エラーを無視
+        if (typeof indexedDB === "undefined") {
+          setLoading(false);
+          setError(null);
+          return;
+        }
         console.error("DB initialization error:", err);
         setError("データベースの初期化に失敗しました");
         setLoading(false);

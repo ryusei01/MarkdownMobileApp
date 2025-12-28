@@ -6,7 +6,7 @@
 import React from "react";
 import { ScrollView, Text, View, Image, Linking } from "react-native";
 import { cn } from "@/lib/utils";
-import { useColors } from "@/hooks/use-colors";
+import { useColors, useFontSize } from "@/hooks/use-colors";
 
 /**
  * MarkdownPreviewコンポーネントのプロパティ
@@ -24,6 +24,7 @@ interface MarkdownPreviewProps {
  */
 export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
   const colors = useColors();
+  const fontSize = useFontSize();
 
   /**
    * テキスト内のインライン要素（リンク、画像、太字、イタリック、インラインコード）をパース
@@ -37,9 +38,9 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
     const elements: React.ReactNode[] = [];
     let elementIndex = 0;
 
-    // すべてのマッチを収集（優先順位: 画像 > リンク > コード > 太字 > イタリック）
+    // すべてのマッチを収集（優先順位: 画像 > リンク > コード > 太字 > 打ち消し線 > イタリック）
     const allMatches: Array<{
-      type: "image" | "link" | "bold" | "italic" | "code";
+      type: "image" | "link" | "bold" | "italic" | "code" | "strikethrough";
       index: number;
       length: number;
       data: any;
@@ -93,6 +94,24 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         length: boldMatch[0].length,
         data: { text: boldMatch[2] },
       });
+    }
+
+    // 打ち消し線を処理（~~text~~）
+    const strikethroughRegex = /~~(.+?)~~/g;
+    let strikethroughMatch;
+    while ((strikethroughMatch = strikethroughRegex.exec(text)) !== null) {
+      // 太字やコードの一部でないことを確認
+      const isPartOfOther = allMatches.some(
+        (m) => strikethroughMatch.index >= m.index && strikethroughMatch.index < m.index + m.length,
+      );
+      if (!isPartOfOther) {
+        allMatches.push({
+          type: "strikethrough",
+          index: strikethroughMatch.index,
+          length: strikethroughMatch[0].length,
+          data: { text: strikethroughMatch[1] },
+        });
+      }
     }
 
     // イタリックを処理（*text* または _text_）- 太字でないもの
@@ -194,7 +213,8 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         elements.push(
           <Text
             key={`${keyPrefix}-code-${elementIndex}`}
-            className="bg-surface px-1 py-0.5 rounded font-mono text-sm text-primary"
+            className="bg-surface px-1 py-0.5 rounded font-mono text-primary"
+            style={{ fontSize: fontSize * 0.875 }}
           >
             {code}
           </Text>
@@ -204,6 +224,13 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         elements.push(
           <Text key={`${keyPrefix}-italic-${elementIndex}`} className="italic">
             {italicText}
+          </Text>
+        );
+      } else if (match.type === "strikethrough") {
+        const { text: strikethroughText } = match.data;
+        elements.push(
+          <Text key={`${keyPrefix}-strikethrough-${elementIndex}`} style={{ textDecorationLine: "line-through" }}>
+            {strikethroughText}
           </Text>
         );
       }
@@ -226,9 +253,10 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
   /**
    * MarkdownテキストをパースしてReact要素の配列に変換
    * サポートする構文:
-   * - 見出し (# ## ###)
+   * - 見出し (# ## ### ####)
    * - 太字 (**text** または __text__)
    * - イタリック (*text* または _text_)
+   * - 打ち消し線 (~~text~~)
    * - リスト (- または *)
    * - 番号付きリスト (1. 2. など)
    * - チェックボックスリスト (- [ ] または - [x])
@@ -280,7 +308,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
             style={{ borderLeftColor: colors.primary }}
             testID={`quote-${i}`}
           >
-            <Text className="text-base text-foreground leading-relaxed italic">
+            <Text className="text-foreground leading-relaxed italic" style={{ fontSize }}>
               {parseInlineElements(quoteLines.join("\n"), `quote-${i}`)}
             </Text>
           </View>
@@ -324,7 +352,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
                   className="flex-1 px-2 py-2 border-r border-border last:border-r-0"
                   testID={`table-header-cell-${i}-${cellIdx}`}
                 >
-                  <Text className="text-sm font-bold text-foreground">{cell}</Text>
+                  <Text className="font-bold text-foreground" style={{ fontSize: fontSize * 0.875 }}>{cell}</Text>
                 </View>
               ))}
             </View>
@@ -341,7 +369,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
                     className="flex-1 px-2 py-2 border-r border-border last:border-r-0"
                     testID={`table-cell-${i}-${rowIdx}-${cellIdx}`}
                   >
-                    <Text className="text-sm text-foreground">
+                    <Text className="text-foreground" style={{ fontSize: fontSize * 0.875 }}>
                       {parseInlineElements(cell, `table-${i}-${rowIdx}-${cellIdx}`)}
                     </Text>
                   </View>
@@ -354,25 +382,32 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         continue;
       }
 
-      // 見出し（# ## ### など）
-      if (line.startsWith("### ")) {
+      // 見出し（# ## ### #### など）
+      if (line.startsWith("#### ")) {
+        const headingText = line.substring(5);
+        elements.push(
+          <Text key={`h4-${i}`} className="font-bold text-foreground mt-2 mb-1" style={{ fontSize: fontSize * 1.0625 }}>
+            {parseInlineElements(headingText, `h4-${i}`)}
+          </Text>
+        );
+      } else if (line.startsWith("### ")) {
         const headingText = line.substring(4);
         elements.push(
-          <Text key={`h3-${i}`} className="text-lg font-bold text-foreground mt-3 mb-2">
+          <Text key={`h3-${i}`} className="font-bold text-foreground mt-3 mb-2" style={{ fontSize: fontSize * 1.125 }}>
             {parseInlineElements(headingText, `h3-${i}`)}
           </Text>
         );
       } else if (line.startsWith("## ")) {
         const headingText = line.substring(3);
         elements.push(
-          <Text key={`h2-${i}`} className="text-xl font-bold text-foreground mt-4 mb-2">
+          <Text key={`h2-${i}`} className="font-bold text-foreground mt-4 mb-2" style={{ fontSize: fontSize * 1.25 }}>
             {parseInlineElements(headingText, `h2-${i}`)}
           </Text>
         );
       } else if (line.startsWith("# ")) {
         const headingText = line.substring(2);
         elements.push(
-          <Text key={`h1-${i}`} className="text-2xl font-bold text-foreground mt-4 mb-3">
+          <Text key={`h1-${i}`} className="font-bold text-foreground mt-4 mb-3" style={{ fontSize: fontSize * 1.5 }}>
             {parseInlineElements(headingText, `h1-${i}`)}
           </Text>
         );
@@ -385,8 +420,8 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
           const text = checkboxMatch[2];
           elements.push(
             <View key={`checkbox-${i}`} className="flex-row items-start mb-1 pl-4" testID={`checkbox-${i}`}>
-              <Text className="text-foreground mr-2">{isChecked ? "☑" : "☐"}</Text>
-              <Text className="text-base text-foreground flex-1 leading-relaxed">
+              <Text className="text-foreground mr-2" style={{ fontSize }}>{isChecked ? "☑" : "☐"}</Text>
+              <Text className="text-foreground flex-1 leading-relaxed" style={{ fontSize }}>
                 {parseInlineElements(text, `checkbox-${i}`)}
               </Text>
             </View>
@@ -401,8 +436,8 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
           const text = numberMatch[2];
           elements.push(
             <View key={`ordered-list-${i}`} className="flex-row items-start mb-1 pl-4" testID={`ordered-list-${i}`}>
-              <Text className="text-foreground mr-2">{number}.</Text>
-              <Text className="text-base text-foreground flex-1 leading-relaxed">
+              <Text className="text-foreground mr-2" style={{ fontSize }}>{number}.</Text>
+              <Text className="text-foreground flex-1 leading-relaxed" style={{ fontSize }}>
                 {parseInlineElements(text, `ordered-list-${i}`)}
               </Text>
             </View>
@@ -414,8 +449,8 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         const text = trimmedLine.substring(2);
         elements.push(
           <View key={`list-${i}`} className="flex-row items-start mb-1 pl-4" testID={`list-${i}`}>
-            <Text className="text-foreground mr-2">•</Text>
-            <Text className="text-base text-foreground flex-1 leading-relaxed">
+            <Text className="text-foreground mr-2" style={{ fontSize }}>•</Text>
+            <Text className="text-foreground flex-1 leading-relaxed" style={{ fontSize }}>
               {parseInlineElements(text, `list-${i}`)}
             </Text>
           </View>
@@ -434,7 +469,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
             key={`code-${i}`}
             className="bg-surface rounded-lg p-3 mb-3 border border-border"
           >
-            <Text className="text-sm text-muted font-mono leading-relaxed">
+            <Text className="text-muted font-mono leading-relaxed" style={{ fontSize: fontSize * 0.875 }}>
               {codeLines.join("\n")}
             </Text>
           </View>
@@ -447,7 +482,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
       // 通常のテキスト（インライン要素を含む）
       else if (trimmedLine) {
         elements.push(
-          <Text key={`text-${i}`} className="text-base text-foreground leading-relaxed mb-2" testID={`text-${i}`}>
+          <Text key={`text-${i}`} className="text-foreground leading-relaxed mb-2" style={{ fontSize }} testID={`text-${i}`}>
             {parseInlineElements(line, `text-${i}`)}
           </Text>
         );

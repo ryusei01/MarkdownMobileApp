@@ -1,3 +1,8 @@
+/**
+ * Markdown構文ガイドコンポーネント
+ * Markdownの構文を説明し、タップでコピーできる機能を提供
+ */
+
 import {
   View,
   Text,
@@ -8,7 +13,8 @@ import {
   Alert,
   Clipboard,
 } from "react-native";
-import { useColors } from "@/hooks/use-colors";
+import { useColors, useFontSize } from "@/hooks/use-colors";
+import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
 
 interface SyntaxItem {
@@ -22,58 +28,71 @@ interface SyntaxCategory {
   items: SyntaxItem[];
 }
 
-const MARKDOWN_SYNTAX: SyntaxCategory[] = [
-  {
-    category: "見出し",
-    items: [
-      { title: "H1", syntax: "# 見出し1", description: "最大の見出し" },
-      { title: "H2", syntax: "## 見出し2", description: "中程度の見出し" },
-      { title: "H3", syntax: "### 見出し3", description: "小さい見出し" },
-      { title: "H4", syntax: "#### 見出し4", description: "さらに小さい見出し" },
-    ],
-  },
-  {
-    category: "テキスト装飾",
-    items: [
-      { title: "太字", syntax: "**太字**", description: "テキストを太くします" },
-      { title: "イタリック", syntax: "*イタリック*", description: "テキストを斜めにします" },
-      { title: "打ち消し", syntax: "~~打ち消し~~", description: "テキストに線を引きます" },
-      { title: "コード", syntax: "`code`", description: "インラインコード" },
-    ],
-  },
-  {
-    category: "リスト",
-    items: [
-      { title: "順序なしリスト", syntax: "- 項目\n- 項目", description: "箇条書きリスト" },
-      { title: "順序付きリスト", syntax: "1. 項目\n2. 項目", description: "番号付きリスト" },
-      { title: "ネストリスト", syntax: "- 項目\n  - 子項目", description: "階層化されたリスト" },
-    ],
-  },
-  {
-    category: "コードブロック",
-    items: [
-      {
-        title: "コードブロック",
-        syntax: "```\ncode here\n```",
-        description: "複数行のコード",
-      },
-      {
-        title: "言語指定",
-        syntax: "```javascript\ncode here\n```",
-        description: "シンタックスハイライト付き",
-      },
-    ],
-  },
-  {
-    category: "その他",
-    items: [
-      { title: "リンク", syntax: "[テキスト](URL)", description: "ハイパーリンク" },
-      { title: "画像", syntax: "![alt](URL)", description: "画像の埋め込み" },
-      { title: "引用", syntax: "> 引用テキスト", description: "ブロック引用" },
-      { title: "水平線", syntax: "---", description: "区切り線" },
-    ],
-  },
-];
+// 構文データは動的に生成（言語に応じて）
+function getMarkdownSyntax(t: (key: string) => string, language: "ja" | "en"): SyntaxCategory[] {
+  const headingText = language === "ja" ? "見出し" : "Heading";
+  const boldText = language === "ja" ? "太字" : "Bold";
+  const italicText = language === "ja" ? "イタリック" : "Italic";
+  const strikethroughText = language === "ja" ? "打ち消し" : "Strikethrough";
+  const itemText = language === "ja" ? "項目" : "Item";
+  const subItemText = language === "ja" ? "子項目" : "Sub Item";
+  const quoteText = language === "ja" ? "引用テキスト" : "Quote text";
+  
+  return [
+    {
+      category: t("syntaxGuide.categories.headings"),
+      items: [
+        { title: t("syntaxGuide.items.h1"), syntax: `# ${headingText}1`, description: t("syntaxGuide.items.h1Description") },
+        { title: t("syntaxGuide.items.h2"), syntax: `## ${headingText}2`, description: t("syntaxGuide.items.h2Description") },
+        { title: t("syntaxGuide.items.h3"), syntax: `### ${headingText}3`, description: t("syntaxGuide.items.h3Description") },
+        { title: t("syntaxGuide.items.h4"), syntax: `#### ${headingText}4`, description: t("syntaxGuide.items.h4Description") },
+      ],
+    },
+    {
+      category: t("syntaxGuide.categories.textDecoration"),
+      items: [
+        { title: t("syntaxGuide.items.bold"), syntax: `**${boldText}**`, description: t("syntaxGuide.items.boldDescription") },
+        { title: t("syntaxGuide.items.italic"), syntax: `*${italicText}*`, description: t("syntaxGuide.items.italicDescription") },
+        { title: t("syntaxGuide.items.strikethrough"), syntax: `~~${strikethroughText}~~`, description: t("syntaxGuide.items.strikethroughDescription") },
+        { title: t("syntaxGuide.items.code"), syntax: "`code`", description: t("syntaxGuide.items.codeDescription") },
+      ],
+    },
+    {
+      category: t("syntaxGuide.categories.lists"),
+      items: [
+        { title: t("syntaxGuide.items.unorderedList"), syntax: `- ${itemText}\n- ${itemText}`, description: t("syntaxGuide.items.unorderedListDescription") },
+        { title: t("syntaxGuide.items.orderedList"), syntax: `1. ${itemText}\n2. ${itemText}`, description: t("syntaxGuide.items.orderedListDescription") },
+        { title: t("syntaxGuide.items.nestedList"), syntax: `- ${itemText}\n  - ${subItemText}`, description: t("syntaxGuide.items.nestedListDescription") },
+        { title: t("syntaxGuide.items.checkboxList"), syntax: `- [ ] ${itemText}\n- [x] ${itemText}`, description: t("syntaxGuide.items.checkboxListDescription") },
+      ],
+    },
+    {
+      category: t("syntaxGuide.categories.codeBlocks"),
+      items: [
+        {
+          title: t("syntaxGuide.items.codeBlock"),
+          syntax: "```\ncode here\n```",
+          description: t("syntaxGuide.items.codeBlockDescription"),
+        },
+        {
+          title: t("syntaxGuide.items.languageSpecified"),
+          syntax: "```javascript\ncode here\n```",
+          description: t("syntaxGuide.items.languageSpecifiedDescription"),
+        },
+      ],
+    },
+    {
+      category: t("syntaxGuide.categories.other"),
+      items: [
+        { title: t("syntaxGuide.items.link"), syntax: "[text](URL)", description: t("syntaxGuide.items.linkDescription") },
+        { title: t("syntaxGuide.items.image"), syntax: "![alt](URL)", description: t("syntaxGuide.items.imageDescription") },
+        { title: t("syntaxGuide.items.quote"), syntax: `> ${quoteText}`, description: t("syntaxGuide.items.quoteDescription") },
+        { title: t("syntaxGuide.items.horizontalRule"), syntax: "---", description: t("syntaxGuide.items.horizontalRuleDescription") },
+        { title: t("syntaxGuide.items.table"), syntax: "| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |", description: t("syntaxGuide.items.tableDescription") },
+      ],
+    },
+  ];
+}
 
 interface MarkdownSyntaxGuideProps {
   visible: boolean;
@@ -83,14 +102,17 @@ interface MarkdownSyntaxGuideProps {
 
 export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntaxGuideProps) {
   const colors = useColors();
+  const fontSize = useFontSize();
+  const { t, language } = useLanguage();
+  const MARKDOWN_SYNTAX = getMarkdownSyntax(t, language);
 
   const handleCopySyntax = (syntax: string) => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Clipboard.setString(syntax);
-      Alert.alert("コピーしました", `"${syntax}" をクリップボードにコピーしました`);
+      Alert.alert(t("syntaxGuide.copySuccess"), t("syntaxGuide.copySuccessMessage", { syntax }));
     } catch (error) {
-      Alert.alert("エラー", "コピーに失敗しました");
+      Alert.alert(t("syntaxGuide.copyError"), t("syntaxGuide.copyErrorMessage"));
     }
   };
 
@@ -117,11 +139,11 @@ export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntax
           }}
           testID={`${testID}-header`}
         >
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.foreground }} testID={`${testID}-title`}>
-            Markdown構文ガイド
+          <Text style={{ fontSize: fontSize * 1.25, fontWeight: "bold", color: colors.foreground }} testID={`${testID}-title`}>
+            {t("syntaxGuide.title")}
           </Text>
           <TouchableOpacity onPress={onClose} style={{ padding: 8 }} testID={`${testID}-close-button`}>
-            <Text style={{ fontSize: 24 }}>✕</Text>
+            <Text style={{ fontSize: fontSize * 1.5, color: colors.foreground }}>✕</Text>
           </TouchableOpacity>
         </View>
 
@@ -132,7 +154,7 @@ export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntax
               {/* カテゴリタイトル */}
               <Text
                 style={{
-                  fontSize: 18,
+                  fontSize: fontSize * 1.125,
                   fontWeight: "bold",
                   color: colors.primary,
                   marginBottom: 12,
@@ -161,7 +183,7 @@ export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntax
                   <View style={{ marginBottom: 8 }}>
                     <Text
                       style={{
-                        fontSize: 14,
+                        fontSize: fontSize * 0.875,
                         fontWeight: "600",
                         color: colors.foreground,
                         marginBottom: 4,
@@ -171,7 +193,7 @@ export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntax
                     </Text>
                     <Text
                       style={{
-                        fontSize: 13,
+                        fontSize: fontSize * 0.8125,
                         fontFamily: "monospace",
                         backgroundColor: colors.background,
                         color: colors.primary,
@@ -182,11 +204,11 @@ export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntax
                       {item.syntax}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 12, color: colors.muted }}>
+                  <Text style={{ fontSize: fontSize * 0.75, color: colors.muted }}>
                     {item.description}
                   </Text>
-                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 6 }}>
-                    💡 タップしてコピー
+                  <Text style={{ fontSize: fontSize * 0.6875, color: colors.muted, marginTop: 6 }}>
+                    {t("syntaxGuide.tapToCopy")}
                   </Text>
                 </Pressable>
               ))}
@@ -204,8 +226,8 @@ export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntax
                 padding: 12,
               }}
             >
-              <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
-                💡 各構文をタップするとクリップボードにコピーされます。エディタに貼り付けて使用してください。
+              <Text style={{ fontSize: fontSize * 0.75, color: colors.muted, lineHeight: 18 }}>
+                {t("syntaxGuide.footerMessage")}
               </Text>
             </View>
           </View>

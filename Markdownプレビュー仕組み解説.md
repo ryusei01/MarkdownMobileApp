@@ -57,9 +57,10 @@ interface MarkdownPreviewProps {
 
 このパーサーは以下のMarkdown構文をサポートしています：
 
-- 見出し（`# ## ###`）
+- 見出し（`# ## ### ####`）
 - 太字（`**text**` または `__text__`）
 - イタリック（`*text*` または `_text_`）
+- 打ち消し線（`~~text~~`）
 - リスト（`-` または `*`）
 - 番号付きリスト（`1. 2.` など）
 - チェックボックスリスト（`- [ ]` または `- [x]`）
@@ -71,7 +72,7 @@ interface MarkdownPreviewProps {
 - 水平線（`---`）
 - テーブル（`|` で区切られた行）
 
-##### 見出し（# ## ###）
+##### 見出し（# ## ### ####）
 
 ```markdown
 # 見出し1
@@ -79,12 +80,18 @@ interface MarkdownPreviewProps {
 ## 見出し2
 
 ### 見出し3
+
+#### 見出し4
 ```
 
 **実装**:
 
 - 行の先頭が`#`で始まるかチェック
 - `#`の数に応じてフォントサイズとマージンを調整
+- H1: フォントサイズ × 1.5、マージン上4、下3
+- H2: フォントサイズ × 1.25、マージン上4、下2
+- H3: フォントサイズ × 1.125、マージン上3、下2
+- H4: フォントサイズ × 1.0625、マージン上2、下1
 - `Text`コンポーネントで表示
 
 **コード例**:
@@ -98,8 +105,15 @@ interface MarkdownPreviewProps {
     while (i < lines.length) {
       const line = lines[i];
 
-      // 見出し（# ## ### など）
-      if (line.startsWith("### ")) {
+      // 見出し（# ## ### #### など）
+      if (line.startsWith("#### ")) {
+        const headingText = line.substring(5);
+        elements.push(
+          <Text key={`h4-${i}`} className="font-bold text-foreground mt-2 mb-1" style={{ fontSize: fontSize * 1.0625 }}>
+            {parseInlineElements(headingText, `h4-${i}`)}
+          </Text>
+        );
+      } else if (line.startsWith("### ")) {
         elements.push(
           <Text key={`h3-${i}`} className="text-lg font-bold text-foreground mt-3 mb-2">
             {line.substring(4)}
@@ -167,29 +181,51 @@ interface MarkdownPreviewProps {
 
 - 正規表現で`*`または`_`で囲まれた部分を検出（太字と区別するため、2文字連続でない場合）
 - 該当部分を`italic`スタイルの`Text`コンポーネントで表示
+- `parseInlineElements`関数内で処理され、太字やコードと重複しないように優先順位を考慮
+
+##### 打ち消し線（~~text~~）
+
+```markdown
+これは~~打ち消し線~~のテキストです
+```
+
+**実装**:
+
+- 正規表現で`~~`で囲まれた部分を検出
+- 該当部分に`textDecorationLine: "line-through"`スタイルを適用
+- `parseInlineElements`関数内で処理され、太字やコードと重複しないように優先順位を考慮
+- 優先順位: 画像 > リンク > コード > 太字 > 打ち消し線 > イタリック
 
 **コード例**:
 
-```87:104:components/markdown-preview.tsx
-      // イタリック（*text* または _text_）
-      else if (line.includes("*") || line.includes("_")) {
-        const parts = line.split(/(\*.*?\*|_.*?_)/);
-        elements.push(
-          <Text key={`italic-${i}`} className="text-base text-foreground leading-relaxed mb-2 italic">
-            {parts.map((part, idx) => {
-              if ((part.startsWith("*") || part.startsWith("_")) && part.length > 2) {
-                const text = part.substring(1, part.length - 1);
-                return (
-                  <Text key={idx} className="italic">
-                    {text}
-                  </Text>
-                );
-              }
-              return part;
-            })}
-          </Text>
-        );
-      }
+```typescript
+// 打ち消し線を処理（~~text~~）
+const strikethroughRegex = /~~(.+?)~~/g;
+let strikethroughMatch;
+while ((strikethroughMatch = strikethroughRegex.exec(text)) !== null) {
+  // 太字やコードの一部でないことを確認
+  const isPartOfOther = allMatches.some(
+    (m) => strikethroughMatch.index >= m.index && strikethroughMatch.index < m.index + m.length,
+  );
+  if (!isPartOfOther) {
+    allMatches.push({
+      type: "strikethrough",
+      index: strikethroughMatch.index,
+      length: strikethroughMatch[0].length,
+      data: { text: strikethroughMatch[1] },
+    });
+  }
+}
+
+// レンダリング時
+else if (match.type === "strikethrough") {
+  const { text: strikethroughText } = match.data;
+  elements.push(
+    <Text key={`${keyPrefix}-strikethrough-${elementIndex}`} style={{ textDecorationLine: "line-through" }}>
+      {strikethroughText}
+    </Text>
+  );
+}
 ```
 
 ##### リスト（- または \*）
@@ -490,7 +526,8 @@ NativeWindを使用して、Tailwind CSSのクラス名でスタイリングを�
 2. リンク（`[text](url)`）
 3. インラインコード（`` `code` ``）
 4. 太字（`**text**` または `__text__`）
-5. イタリック（`*text*` または `_text_`）
+5. 打ち消し線（`~~text~~`）
+6. イタリック（`*text*` または `_text_`）
 
 この優先順位により、複数のインライン要素が混在する場合でも正しく処理されます。
 
@@ -519,7 +556,7 @@ NativeWindを使用して、Tailwind CSSのクラス名でスタイリングを�
 - ✅ テーマ対応
 - ✅ リアルタイムプレビュー
 - ✅ 豊富なMarkdown構文をサポート（見出し、リスト、リンク、画像、テーブルなど）
-- ✅ インライン要素の適切な処理（リンク、画像、太字、イタリック、コード）
+- ✅ インライン要素の適切な処理（リンク、画像、太字、打ち消し線、イタリック、コード）
 
 ### 技術スタック
 

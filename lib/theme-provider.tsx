@@ -1,42 +1,40 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
+/**
+ * テーマプロバイダーコンポーネント
+ * ライトモード固定でフォントサイズを管理し、アプリ全体に提供
+ */
+
+import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
+import { Appearance, View } from "react-native";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
 
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
+import { useThemeSettings } from "@/hooks/use-theme-settings";
 
 type ThemeContextValue = {
   colorScheme: ColorScheme;
-  setColorScheme: (scheme: ColorScheme) => void;
+  fontSize: number;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useSystemColorScheme() ?? "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  const { settings } = useThemeSettings();
+  const colorScheme: ColorScheme = "light"; // ライトモード固定
 
-  const applyScheme = useCallback((scheme: ColorScheme) => {
-    nativewindColorScheme.set(scheme);
-    Appearance.setColorScheme?.(scheme);
+  // ライトモードを適用
+  useEffect(() => {
+    nativewindColorScheme.set("light");
+    Appearance.setColorScheme?.("light");
     if (typeof document !== "undefined") {
       const root = document.documentElement;
-      root.dataset.theme = scheme;
-      root.classList.toggle("dark", scheme === "dark");
-      const palette = SchemeColors[scheme];
+      root.dataset.theme = "light";
+      root.classList.remove("dark");
+      const palette = SchemeColors.light;
       Object.entries(palette).forEach(([token, value]) => {
         root.style.setProperty(`--color-${token}`, value);
       });
     }
   }, []);
-
-  const setColorScheme = useCallback((scheme: ColorScheme) => {
-    setColorSchemeState(scheme);
-    applyScheme(scheme);
-  }, [applyScheme]);
-
-  useEffect(() => {
-    applyScheme(colorScheme);
-  }, [applyScheme, colorScheme]);
 
   const themeVariables = useMemo(
     () =>
@@ -50,18 +48,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         "color-success": SchemeColors[colorScheme].success,
         "color-warning": SchemeColors[colorScheme].warning,
         "color-error": SchemeColors[colorScheme].error,
+        "font-size-base": `${settings.fontSize}px`,
       }),
-    [colorScheme],
+    [colorScheme, settings.fontSize],
   );
+
+  // Web用のCSS変数も設定
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.style.setProperty("--font-size-base", `${settings.fontSize}px`);
+    }
+  }, [settings.fontSize]);
 
   const value = useMemo(
     () => ({
       colorScheme,
-      setColorScheme,
+      fontSize: settings.fontSize,
     }),
-    [colorScheme, setColorScheme],
+    [colorScheme, settings.fontSize],
   );
-  console.log(value, themeVariables)
 
   return (
     <ThemeContext.Provider value={value}>
@@ -70,6 +76,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * テーマコンテキストを使用するフック
+ * @returns テーマコンテキストの値（カラースキーム、フォントサイズなど）
+ */
 export function useThemeContext(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {

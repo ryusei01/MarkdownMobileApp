@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useMarkdownFilesUniversal } from "@/hooks/use-markdown-files-universal";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
 
@@ -33,6 +34,7 @@ export default function HomeScreen() {
   // ナビゲーションとスタイル
   const router = useRouter();
   const colors = useColors();
+  const colorScheme = useColorScheme();
   const { t, language } = useLanguage();
   const { files, createFile, deleteFile, renameFile } = useMarkdownFilesUniversal();
 
@@ -255,12 +257,12 @@ export default function HomeScreen() {
         testID="home-rename-modal"
       >
         <View
-          className="flex-1 items-center justify-center"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          className="flex-1 items-center justify-center px-4"
+          style={{ backgroundColor: colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)" }}
           testID="home-rename-modal-backdrop"
         >
           <View
-            className="w-80 rounded-lg p-6 gap-4"
+            className="w-full max-w-sm rounded-lg p-6 gap-4"
             style={{ backgroundColor: colors.surface }}
             testID="home-rename-modal-content"
           >

@@ -58,7 +58,7 @@
     "version": "バージョン",
     "versionValue": "1.0.0",
     "description": "説明",
-    "descriptionValue": "シンプルで使いやすいMarkdownエディタです。リアルタイムプレビュー、クラウド同期、複数の形式でのダウンロードに対応しています。"
+    "descriptionValue": "シンプルで使いやすいMarkdownエディタです。リアルタイムプレビュー、複数の形式でのダウンロードに対応しています。"
   },
   "languageSelect": {
     "title": "言語を選択してください",
@@ -66,8 +66,61 @@
     "japanese": "日本語",
     "english": "English",
     "continue": "続ける"
+  },
+  "syntaxGuide": {
+    "title": "Markdown構文ガイド",
+    "copySuccess": "コピーしました",
+    "copySuccessMessage": "\"{{syntax}}\" をクリップボードにコピーしました",
+    "copyError": "エラー",
+    "copyErrorMessage": "コピーに失敗しました",
+    "tapToCopy": "💡 タップしてコピー",
+    "footerMessage": "💡 各構文をタップするとクリップボードにコピーされます。エディタに貼り付けて使用してください。",
+    "categories": {
+      "headings": "見出し",
+      "textDecoration": "テキスト装飾",
+      "lists": "リスト",
+      "codeBlocks": "コードブロック",
+      "other": "その他"
+    },
+    "items": {
+      "h1": "H1",
+      "h1Description": "最大の見出し",
+      "h2": "H2",
+      "h2Description": "中程度の見出し",
+      "h3": "H3",
+      "h3Description": "小さい見出し",
+      "h4": "H4",
+      "h4Description": "さらに小さい見出し",
+      "bold": "太字",
+      "boldDescription": "テキストを太くします",
+      "italic": "イタリック",
+      "italicDescription": "テキストを斜めにします",
+      "strikethrough": "打ち消し",
+      "strikethroughDescription": "テキストに線を引きます",
+      "code": "コード",
+      "codeDescription": "インラインコード",
+      "unorderedList": "順序なしリスト",
+      "unorderedListDescription": "箇条書きリスト",
+      "orderedList": "順序付きリスト",
+      "orderedListDescription": "番号付きリスト",
+      "nestedList": "ネストリスト",
+      "nestedListDescription": "階層化されたリスト",
+      "checkboxList": "チェックボックスリスト",
+      "checkboxListDescription": "チェックボックス付きリスト",
+      "codeBlock": "コードブロック",
+      "codeBlockDescription": "複数行のコード",
+      "languageSpecified": "言語指定",
+      "languageSpecifiedDescription": "シンタックスハイライト付き",
+      "link": "リンク",
+      "linkDescription": "ハイパーリンク",
+      "image": "画像",
+      "imageDescription": "画像の埋め込み",
+      "quote": "引用",
+      "quoteDescription": "ブロック引用",
+      "horizontalRule": "水平線",
+      "horizontalRuleDescription": "区切り線",
+      "table": "テーブル",
+      "tableDescription": "表形式のデータ"
+    }
   }
 }
-
-
-
