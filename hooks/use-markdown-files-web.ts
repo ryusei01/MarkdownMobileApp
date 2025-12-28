@@ -142,8 +142,26 @@ export function useMarkdownFilesWeb() {
       if (!db) return null;
 
       try {
-        const file = files.find((f) => f.id === fileId);
-        if (!file) return null;
+        // IndexedDBからファイルを取得
+        const getFilePromise = new Promise<MarkdownFile | null>((resolve, reject) => {
+          const transaction = db.transaction([STORE_NAME], "readonly");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.get(fileId);
+
+          request.onsuccess = () => {
+            resolve(request.result || null);
+          };
+
+          request.onerror = () => {
+            reject(request.error);
+          };
+        });
+
+        const file = await getFilePromise;
+        if (!file) {
+          console.error("File not found:", fileId);
+          return null;
+        }
 
         const updatedFile: MarkdownFile = {
           ...file,
@@ -174,7 +192,7 @@ export function useMarkdownFilesWeb() {
         return null;
       }
     },
-    [db, files]
+    [db]
   );
 
   // ファイルを削除
@@ -210,8 +228,26 @@ export function useMarkdownFilesWeb() {
       if (!db) return null;
 
       try {
-        const file = files.find((f) => f.id === fileId);
-        if (!file) return null;
+        // IndexedDBからファイルを取得
+        const getFilePromise = new Promise<MarkdownFile | null>((resolve, reject) => {
+          const transaction = db.transaction([STORE_NAME], "readonly");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.get(fileId);
+
+          request.onsuccess = () => {
+            resolve(request.result || null);
+          };
+
+          request.onerror = () => {
+            reject(request.error);
+          };
+        });
+
+        const file = await getFilePromise;
+        if (!file) {
+          console.error("File not found:", fileId);
+          return null;
+        }
 
         const renamedFile: MarkdownFile = {
           ...file,
@@ -242,7 +278,7 @@ export function useMarkdownFilesWeb() {
         return null;
       }
     },
-    [db, files]
+    [db]
   );
 
   // ID でファイルを取得

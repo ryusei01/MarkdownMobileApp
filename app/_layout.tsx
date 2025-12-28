@@ -55,6 +55,7 @@ function RootLayoutContent() {
       <LanguageSelectModal
         visible={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
+        testID="root-language-select-modal"
       />
       <RootLayoutInner />
     </>
@@ -130,7 +131,7 @@ function RootLayoutInner() {
 
   // メインコンテンツ（すべてのプロバイダーでラップ）
   const content = (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }} testID="root-gesture-handler">
       {/* tRPCプロバイダー（型安全なAPI呼び出しを有効化） */}
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         {/* React Queryプロバイダー（サーバーステート管理） */}
@@ -138,7 +139,7 @@ function RootLayoutInner() {
           {/* Expo Routerのスタックナビゲーション */}
           {/* デフォルトでネイティブヘッダーを非表示（ルートセグメントが表示されないようにするため） */}
           {/* ヘッダーが必要な画面では、Stack.Screenのオプションで明示的に有効化 */}
-          <Stack screenOptions={{ headerShown: false }}>
+          <Stack screenOptions={{ headerShown: false }} testID="root-stack-navigator">
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
@@ -154,8 +155,8 @@ function RootLayoutInner() {
 
   if (shouldOverrideSafeArea) {
     return (
-      <ThemeProvider>
-        <SafeAreaProvider initialMetrics={providerInitialMetrics}>
+      <ThemeProvider testID="root-theme-provider">
+        <SafeAreaProvider initialMetrics={providerInitialMetrics} testID="root-safe-area-provider">
           <SafeAreaFrameContext.Provider value={frame}>
             <SafeAreaInsetsContext.Provider value={insets}>
               {content}
@@ -167,8 +168,8 @@ function RootLayoutInner() {
   }
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
+    <ThemeProvider testID="root-theme-provider">
+      <SafeAreaProvider initialMetrics={providerInitialMetrics} testID="root-safe-area-provider">{content}</SafeAreaProvider>
     </ThemeProvider>
   );
 }
@@ -178,7 +179,7 @@ function RootLayoutInner() {
  */
 export default function RootLayout() {
   return (
-    <LanguageProvider>
+    <LanguageProvider testID="root-language-provider">
       <RootLayoutContent />
     </LanguageProvider>
   );

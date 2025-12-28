@@ -1,0 +1,50 @@
+# Cursor プロジェクトルール
+
+## コーディング規約
+
+### 1. 主要ソースファイルへのコメント記載
+- すべての主要なソースファイル（コンポーネント、画面、フック、ユーティリティなど）の先頭に、ファイルの目的と機能を説明するコメントを記載すること
+- コメントは日本語で記載すること
+- 関数やコンポーネントの主要な機能についても、JSDoc形式のコメントを追加すること
+
+例:
+```typescript
+/**
+ * エディタ画面コンポーネント
+ * エディタとプレビューの切り替え、自動保存、ダウンロード機能を提供
+ */
+```
+
+### 2. フロントエンドの主要ソースへのid/testID追加
+- React Nativeの主要なコンポーネントや要素には、必ず`testID`プロパティを追加すること
+- `testID`は、コンポーネントの役割を明確に示す命名規則に従うこと（例: `editor-screen`, `home-file-list`, `settings-language-section`）
+- ネストされた要素には、親要素のtestIDをプレフィックスとして使用すること（例: `editor-header`, `editor-back-button`）
+- モーダルや動的に生成される要素には、必要に応じて動的なtestIDを追加すること（例: `home-file-item-${item.id}`）
+
+例:
+```typescript
+<View testID="editor-screen">
+  <View testID="editor-header">
+    <TouchableOpacity testID="editor-back-button">
+      ...
+    </TouchableOpacity>
+  </View>
+</View>
+```
+
+### 3. 適用対象
+- `app/` ディレクトリ内のすべての画面コンポーネント
+- `components/` ディレクトリ内の再利用可能なコンポーネント
+- `hooks/` ディレクトリ内の主要なカスタムフック
+- `lib/` ディレクトリ内の主要なユーティリティ関数
+
+### 4. 命名規則
+- testIDは、kebab-case（ハイフン区切り）を使用すること
+- 画面レベルの要素: `{screen-name}-{element-type}` (例: `editor-screen`, `home-header`)
+- コンポーネント内の要素: `{component-name}-{element-name}` (例: `editor-back-button`, `settings-language-ja`)
+- 動的要素: `{parent-name}-{dynamic-id}` (例: `home-file-item-${item.id}`)
+
+## 注意事項
+- これらのルールは、コードの可読性、保守性、テスト容易性を向上させるために設定されています
+- 新規ファイル作成時や既存ファイルの修正時には、必ずこれらのルールに従ってください
+

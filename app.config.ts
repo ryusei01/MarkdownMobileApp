@@ -16,7 +16,8 @@ const env = {
   appSlug: "markdown-editor",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663262847080/evMocVAewwjojviC.png",
+  logoUrl:
+    "https://files.manuscdn.com/user_upload_by_module/session_file/310519663262847080/evMocVAewwjojviC.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -70,7 +71,8 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
+        microphonePermission:
+          "Allow $(PRODUCT_NAME) to access your microphone.",
       },
     ],
     [
@@ -103,7 +105,7 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
+    reactCompiler: false, // trueからfalseに変更
   },
   extra: {
     eas: {

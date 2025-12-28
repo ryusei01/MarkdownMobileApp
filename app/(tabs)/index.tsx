@@ -17,7 +17,7 @@ import {
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
-import { useMarkdownFiles } from "@/hooks/use-markdown-files";
+import { useMarkdownFilesUniversal } from "@/hooks/use-markdown-files-universal";
 import { useColors } from "@/hooks/use-colors";
 import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
@@ -34,7 +34,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
   const { t, language } = useLanguage();
-  const { files, createFile, deleteFile, renameFile } = useMarkdownFiles();
+  const { files, createFile, deleteFile, renameFile } = useMarkdownFilesUniversal();
 
   // 状態管理
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null); // 選択中のファイルID（名前変更用）
@@ -160,6 +160,7 @@ export default function HomeScreen() {
       <Pressable
         onPress={() => handleOpenFile(item.id)}
         onLongPress={() => handleRenameStart(item.id, item.name)}
+        testID={`home-file-item-${item.id}`}
         style={({ pressed }) => [
           {
             backgroundColor: colors.surface,
@@ -172,34 +173,35 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="flex-1 text-base font-semibold text-foreground" numberOfLines={1}>
+        <View className="flex-row items-center justify-between mb-2" testID={`home-file-item-header-${item.id}`}>
+          <Text className="flex-1 text-base font-semibold text-foreground" numberOfLines={1} testID={`home-file-item-name-${item.id}`}>
             {item.name}
           </Text>
           <TouchableOpacity
             onPress={() => handleDeleteFile(item.id, item.name)}
             className="p-2 -mr-2"
+            testID={`home-file-item-delete-${item.id}`}
           >
             <Text className="text-lg">🗑️</Text>
           </TouchableOpacity>
         </View>
-        <Text className="text-xs text-muted">{formattedDate}</Text>
+        <Text className="text-xs text-muted" testID={`home-file-item-date-${item.id}`}>{formattedDate}</Text>
       </Pressable>
     );
   };
 
   return (
-    <ScreenContainer className="bg-background">
+    <ScreenContainer className="bg-background" testID="home-screen">
       {/* ヘッダー */}
-      <View className="px-4 py-4 border-b border-border flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-foreground">{t("home.title")}</Text>
-        <TouchableOpacity onPress={handleOpenSettings} className="p-2">
+      <View className="px-4 py-4 border-b border-border flex-row items-center justify-between" testID="home-header">
+        <Text className="text-2xl font-bold text-foreground" testID="home-title">{t("home.title")}</Text>
+        <TouchableOpacity onPress={handleOpenSettings} className="p-2" testID="home-settings-button">
           <Text className="text-2xl">⚙️</Text>
         </TouchableOpacity>
       </View>
 
       {/* 検索バー */}
-      <View className="px-4 py-3 border-b border-border">
+      <View className="px-4 py-3 border-b border-border" testID="home-search-container">
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -207,16 +209,17 @@ export default function HomeScreen() {
           placeholderTextColor={colors.muted}
           className="bg-surface px-4 py-2 rounded-lg text-base text-foreground"
           style={{ borderColor: colors.border, borderWidth: 1 }}
+          testID="home-search-input"
         />
       </View>
 
       {/* ファイル一覧 */}
-      <View className="flex-1 px-4 py-4">
+      <View className="flex-1 px-4 py-4" testID="home-file-list-container">
         {filteredFiles.length === 0 ? (
-          <View className="flex-1 items-center justify-center gap-3">
+          <View className="flex-1 items-center justify-center gap-3" testID="home-empty-state">
             <Text className="text-4xl">📝</Text>
-            <Text className="text-lg font-semibold text-foreground">{t("home.noFiles")}</Text>
-            <Text className="text-sm text-muted text-center">
+            <Text className="text-lg font-semibold text-foreground" testID="home-empty-state-title">{t("home.noFiles")}</Text>
+            <Text className="text-sm text-muted text-center" testID="home-empty-state-description">
               {t("home.noFilesDescription")}
             </Text>
           </View>
@@ -227,15 +230,17 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             scrollEnabled
             contentContainerStyle={{ flexGrow: 1 }}
+            testID="home-file-list"
           />
         )}
       </View>
 
       {/* 新規作成ボタン */}
-      <View className="px-4 py-4 border-t border-border">
+      <View className="px-4 py-4 border-t border-border" testID="home-create-button-container">
         <TouchableOpacity
           onPress={handleCreateFile}
           className="bg-primary rounded-full py-4 items-center justify-center active:opacity-80"
+          testID="home-create-button"
         >
           <Text className="text-lg font-semibold text-background">{t("home.createNew")}</Text>
         </TouchableOpacity>
@@ -247,16 +252,19 @@ export default function HomeScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowRenameModal(false)}
+        testID="home-rename-modal"
       >
         <View
           className="flex-1 items-center justify-center"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          testID="home-rename-modal-backdrop"
         >
           <View
             className="w-80 rounded-lg p-6 gap-4"
             style={{ backgroundColor: colors.surface }}
+            testID="home-rename-modal-content"
           >
-            <Text className="text-lg font-bold text-foreground">{t("editor.renameTitle")}</Text>
+            <Text className="text-lg font-bold text-foreground" testID="home-rename-modal-title">{t("editor.renameTitle")}</Text>
 
             <TextInput
               value={newFileName}
@@ -265,12 +273,14 @@ export default function HomeScreen() {
               placeholderTextColor={colors.muted}
               className="px-4 py-2 rounded-lg text-base text-foreground border border-border"
               style={{ borderColor: colors.border, borderWidth: 1 }}
+              testID="home-rename-modal-input"
             />
 
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-3" testID="home-rename-modal-actions">
               <TouchableOpacity
                 onPress={() => setShowRenameModal(false)}
                 className="flex-1 py-3 rounded-lg border border-border items-center"
+                testID="home-rename-modal-cancel"
               >
                 <Text className="font-semibold text-foreground">{t("common.cancel")}</Text>
               </TouchableOpacity>
@@ -279,6 +289,7 @@ export default function HomeScreen() {
                 onPress={handleRenameConfirm}
                 className="flex-1 py-3 rounded-lg items-center"
                 style={{ backgroundColor: colors.primary }}
+                testID="home-rename-modal-confirm"
               >
                 <Text className="font-semibold text-background">{t("common.confirm")}</Text>
               </TouchableOpacity>

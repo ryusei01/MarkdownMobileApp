@@ -1,3 +1,8 @@
+/**
+ * 設定画面コンポーネント
+ * 言語設定、テーマ設定、フォントサイズ設定、アプリ情報を提供
+ */
+
 import {
   View,
   Text,
@@ -15,6 +20,13 @@ import { useColors } from "@/hooks/use-colors";
 import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
 
+/**
+ * 設定画面
+ * - 言語選択（日本語/英語）
+ * - テーマモード選択（ライト/ダーク/自動）
+ * - フォントサイズ調整（12-20px）
+ * - アプリ情報表示
+ */
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -49,25 +61,26 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScreenContainer className="bg-background" edges={["top", "left", "right", "bottom"]}>
-      <View className="flex-1">
+    <ScreenContainer className="bg-background" edges={["top", "left", "right", "bottom"]} testID="settings-screen">
+      <View className="flex-1" testID="settings-container">
         {/* ヘッダー */}
-        <View className="px-4 py-3 border-b border-border flex-row items-center">
-          <TouchableOpacity onPress={handleGoBack} className="p-2 -ml-2">
+        <View className="px-4 py-3 border-b border-border flex-row items-center" testID="settings-header">
+          <TouchableOpacity onPress={handleGoBack} className="p-2 -ml-2" testID="settings-back-button">
             <Text className="text-lg text-primary font-semibold">← {t("common.back")}</Text>
           </TouchableOpacity>
-          <Text className="text-2xl font-bold text-foreground ml-2">{t("settings.title")}</Text>
+          <Text className="text-2xl font-bold text-foreground ml-2" testID="settings-title">{t("settings.title")}</Text>
         </View>
 
         {/* コンテンツ */}
-        <ScrollView className="flex-1 px-4 py-4">
+        <ScrollView className="flex-1 px-4 py-4" testID="settings-scroll-view">
           {/* 言語設定セクション */}
-          <View className="mb-6">
-            <Text className="text-lg font-bold text-foreground mb-3">{t("settings.language")}</Text>
+          <View className="mb-6" testID="settings-language-section">
+            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-language-title">{t("settings.language")}</Text>
 
             {/* 日本語 */}
             <Pressable
               onPress={() => handleLanguageChange("ja")}
+              testID="settings-language-ja"
               style={({ pressed }) => [
                 styles.settingItem,
                 {
@@ -81,7 +94,7 @@ export default function SettingsScreen() {
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-foreground">{t("settings.japanese")}</Text>
                 {language === "ja" && (
-                  <Text className="text-lg text-primary">✓</Text>
+                  <Text className="text-lg text-primary" testID="settings-language-ja-check">✓</Text>
                 )}
               </View>
             </Pressable>
@@ -89,6 +102,7 @@ export default function SettingsScreen() {
             {/* 英語 */}
             <Pressable
               onPress={() => handleLanguageChange("en")}
+              testID="settings-language-en"
               style={({ pressed }) => [
                 styles.settingItem,
                 {
@@ -103,19 +117,20 @@ export default function SettingsScreen() {
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-foreground">{t("settings.english")}</Text>
                 {language === "en" && (
-                  <Text className="text-lg text-primary">✓</Text>
+                  <Text className="text-lg text-primary" testID="settings-language-en-check">✓</Text>
                 )}
               </View>
             </Pressable>
           </View>
 
           {/* テーマ設定セクション */}
-          <View className="mb-6">
-            <Text className="text-lg font-bold text-foreground mb-3">{t("settings.theme")}</Text>
+          <View className="mb-6" testID="settings-theme-section">
+            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-theme-title">{t("settings.theme")}</Text>
 
             {/* ライトモード */}
             <Pressable
               onPress={() => handleThemeModeChange("light")}
+              testID="settings-theme-light"
               style={({ pressed }) => [
                 styles.settingItem,
                 {
@@ -129,7 +144,7 @@ export default function SettingsScreen() {
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-foreground">{t("settings.lightMode")}</Text>
                 {settings.mode === "light" && (
-                  <Text className="text-lg text-primary">✓</Text>
+                  <Text className="text-lg text-primary" testID="settings-theme-light-check">✓</Text>
                 )}
               </View>
             </Pressable>
@@ -137,6 +152,7 @@ export default function SettingsScreen() {
             {/* ダークモード */}
             <Pressable
               onPress={() => handleThemeModeChange("dark")}
+              testID="settings-theme-dark"
               style={({ pressed }) => [
                 styles.settingItem,
                 {
@@ -151,7 +167,7 @@ export default function SettingsScreen() {
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-foreground">{t("settings.darkMode")}</Text>
                 {settings.mode === "dark" && (
-                  <Text className="text-lg text-primary">✓</Text>
+                  <Text className="text-lg text-primary" testID="settings-theme-dark-check">✓</Text>
                 )}
               </View>
             </Pressable>
@@ -159,6 +175,7 @@ export default function SettingsScreen() {
             {/* 自動モード */}
             <Pressable
               onPress={() => handleThemeModeChange("auto")}
+              testID="settings-theme-auto"
               style={({ pressed }) => [
                 styles.settingItem,
                 {
@@ -173,20 +190,20 @@ export default function SettingsScreen() {
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-foreground">{t("settings.autoMode")}</Text>
                 {settings.mode === "auto" && (
-                  <Text className="text-lg text-primary">✓</Text>
+                  <Text className="text-lg text-primary" testID="settings-theme-auto-check">✓</Text>
                 )}
               </View>
             </Pressable>
           </View>
 
           {/* フォントサイズセクション */}
-          <View className="mb-6">
-            <Text className="text-lg font-bold text-foreground mb-3">{t("settings.fontSize")}</Text>
+          <View className="mb-6" testID="settings-font-size-section">
+            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-font-size-title">{t("settings.fontSize")}</Text>
 
-            <View className="bg-surface rounded-lg p-4 border border-border">
+            <View className="bg-surface rounded-lg p-4 border border-border" testID="settings-font-size-container">
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-base text-muted">{t("settings.currentFontSize", { size: fontSize.toString() })}</Text>
-                <Text className="text-2xl font-bold text-foreground" style={{ fontSize }}>
+                <Text className="text-base text-muted" testID="settings-font-size-label">{t("settings.currentFontSize", { size: fontSize.toString() })}</Text>
+                <Text className="text-2xl font-bold text-foreground" style={{ fontSize }} testID="settings-font-size-preview">
                   Aa
                 </Text>
               </View>
@@ -197,46 +214,48 @@ export default function SettingsScreen() {
                   disabled={fontSize <= 12}
                   className="bg-primary rounded-lg px-4 py-2"
                   activeOpacity={0.8}
+                  testID="settings-font-size-decrease"
                 >
                   <Text className="text-lg font-bold text-background">−</Text>
                 </TouchableOpacity>
 
-                <View className="flex-1 h-1 bg-border rounded-full mx-2" />
+                <View className="flex-1 h-1 bg-border rounded-full mx-2" testID="settings-font-size-slider" />
 
                 <TouchableOpacity
                   onPress={() => handleFontSizeChange(1)}
                   disabled={fontSize >= 20}
                   className="bg-primary rounded-lg px-4 py-2"
                   activeOpacity={0.8}
+                  testID="settings-font-size-increase"
                 >
                   <Text className="text-lg font-bold text-background">+</Text>
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-xs text-muted text-center mt-3">
+              <Text className="text-xs text-muted text-center mt-3" testID="settings-font-size-range">
                 {t("settings.fontSizeRange")}
               </Text>
             </View>
           </View>
 
           {/* アプリ情報セクション */}
-          <View className="mb-6">
-            <Text className="text-lg font-bold text-foreground mb-3">{t("settings.appInfo")}</Text>
+          <View className="mb-6" testID="settings-app-info-section">
+            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-app-info-title">{t("settings.appInfo")}</Text>
 
-            <View className="bg-surface rounded-lg p-4 border border-border">
-              <View className="mb-3">
+            <View className="bg-surface rounded-lg p-4 border border-border" testID="settings-app-info-container">
+              <View className="mb-3" testID="settings-app-name">
                 <Text className="text-sm text-muted">{t("settings.appName")}</Text>
-                <Text className="text-base font-semibold text-foreground">{t("settings.appNameValue")}</Text>
+                <Text className="text-base font-semibold text-foreground" testID="settings-app-name-value">{t("settings.appNameValue")}</Text>
               </View>
 
-              <View className="mb-3">
+              <View className="mb-3" testID="settings-app-version">
                 <Text className="text-sm text-muted">{t("settings.version")}</Text>
-                <Text className="text-base font-semibold text-foreground">{t("settings.versionValue")}</Text>
+                <Text className="text-base font-semibold text-foreground" testID="settings-app-version-value">{t("settings.versionValue")}</Text>
               </View>
 
-              <View>
+              <View testID="settings-app-description">
                 <Text className="text-sm text-muted">{t("settings.description")}</Text>
-                <Text className="text-base text-foreground leading-relaxed">
+                <Text className="text-base text-foreground leading-relaxed" testID="settings-app-description-value">
                   {t("settings.descriptionValue")}
                 </Text>
               </View>

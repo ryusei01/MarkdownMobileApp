@@ -78,9 +78,10 @@ const MARKDOWN_SYNTAX: SyntaxCategory[] = [
 interface MarkdownSyntaxGuideProps {
   visible: boolean;
   onClose: () => void;
+  testID?: string;
 }
 
-export function MarkdownSyntaxGuide({ visible, onClose }: MarkdownSyntaxGuideProps) {
+export function MarkdownSyntaxGuide({ visible, onClose, testID }: MarkdownSyntaxGuideProps) {
   const colors = useColors();
 
   const handleCopySyntax = (syntax: string) => {
@@ -99,8 +100,9 @@ export function MarkdownSyntaxGuide({ visible, onClose }: MarkdownSyntaxGuidePro
       animationType="slide"
       transparent={false}
       onRequestClose={onClose}
+      testID={testID}
     >
-      <View style={{ backgroundColor: colors.background, flex: 1 }}>
+      <View style={{ backgroundColor: colors.background, flex: 1 }} testID={`${testID}-container`}>
         {/* ヘッダー */}
         <View
           style={{
@@ -113,17 +115,18 @@ export function MarkdownSyntaxGuide({ visible, onClose }: MarkdownSyntaxGuidePro
             alignItems: "center",
             justifyContent: "space-between",
           }}
+          testID={`${testID}-header`}
         >
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.foreground }}>
+          <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.foreground }} testID={`${testID}-title`}>
             Markdown構文ガイド
           </Text>
-          <TouchableOpacity onPress={onClose} style={{ padding: 8 }}>
+          <TouchableOpacity onPress={onClose} style={{ padding: 8 }} testID={`${testID}-close-button`}>
             <Text style={{ fontSize: 24 }}>✕</Text>
           </TouchableOpacity>
         </View>
 
         {/* コンテンツ */}
-        <ScrollView style={{ flex: 1, paddingVertical: 12 }}>
+        <ScrollView style={{ flex: 1, paddingVertical: 12 }} testID={`${testID}-scroll`}>
           {MARKDOWN_SYNTAX.map((categoryData, categoryIndex) => (
             <View key={categoryIndex} style={{ marginBottom: 20, paddingHorizontal: 16 }}>
               {/* カテゴリタイトル */}

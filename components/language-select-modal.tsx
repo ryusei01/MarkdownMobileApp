@@ -7,9 +7,10 @@ import * as Haptics from "expo-haptics";
 interface LanguageSelectModalProps {
   visible: boolean;
   onClose: () => void;
+  testID?: string;
 }
 
-export function LanguageSelectModal({ visible, onClose }: LanguageSelectModalProps) {
+export function LanguageSelectModal({ visible, onClose, testID }: LanguageSelectModalProps) {
   const colors = useColors();
   const { t, setLanguage } = useLanguage();
   const { markLanguageSelected, settings } = useLanguageSettings();
@@ -27,28 +28,32 @@ export function LanguageSelectModal({ visible, onClose }: LanguageSelectModalPro
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      testID={testID}
     >
       <View
         className="flex-1 items-center justify-center"
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+        testID={`${testID}-backdrop`}
       >
         <View
           className="w-80 rounded-2xl p-6 gap-6"
           style={{ backgroundColor: colors.surface }}
+          testID={`${testID}-content`}
         >
-          <View className="items-center gap-2">
-            <Text className="text-2xl font-bold text-foreground text-center">
+          <View className="items-center gap-2" testID={`${testID}-header`}>
+            <Text className="text-2xl font-bold text-foreground text-center" testID={`${testID}-title`}>
               {t("languageSelect.title")}
             </Text>
-            <Text className="text-sm text-muted text-center">
+            <Text className="text-sm text-muted text-center" testID={`${testID}-subtitle`}>
               {t("languageSelect.subtitle")}
             </Text>
           </View>
 
-          <View className="gap-3">
+          <View className="gap-3" testID={`${testID}-options`}>
             {/* 日本語 */}
             <Pressable
               onPress={() => handleLanguageSelect("ja")}
+              testID={`${testID}-option-ja`}
               style={({ pressed }) => [
                 styles.languageButton,
                 {
@@ -67,6 +72,7 @@ export function LanguageSelectModal({ visible, onClose }: LanguageSelectModalPro
             {/* 英語 */}
             <Pressable
               onPress={() => handleLanguageSelect("en")}
+              testID={`${testID}-option-en`}
               style={({ pressed }) => [
                 styles.languageButton,
                 {

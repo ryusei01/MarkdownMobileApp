@@ -13,14 +13,16 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Modal,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MarkdownSyntaxGuide } from "@/components/markdown-syntax-guide";
-import { useMarkdownFiles, type MarkdownFile } from "@/hooks/use-markdown-files";
-import { useMarkdownDownload } from "@/hooks/use-markdown-download";
+import { useMarkdownFilesUniversal } from "@/hooks/use-markdown-files-universal";
+import type { MarkdownFile } from "@/hooks/use-markdown-files";
+import { useMarkdownDownloadUniversal } from "@/hooks/use-markdown-download-universal";
 import { useColors } from "@/hooks/use-colors";
 import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
@@ -44,9 +46,9 @@ export default function EditorScreen() {
   const { t } = useLanguage();
   
   // カスタムフック
-  const { getFile, updateFileContent, loading: filesLoading } = useMarkdownFiles();
+  const { getFile, updateFileContent, renameFile, loading: filesLoading } = useMarkdownFilesUniversal();
   const { downloadAsMarkdown, downloadAsHTML, downloadAsText, downloading } =
-    useMarkdownDownload();
+    useMarkdownDownloadUniversal();
 
   // 状態管理
   const [file, setFile] = useState<MarkdownFile | null>(null); // 現在編集中のファイル
@@ -56,6 +58,9 @@ export default function EditorScreen() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved" | "saving">("saved"); // 保存状態
   const [showDownloadMenu, setShowDownloadMenu] = useState(false); // ダウンロードメニューの表示状態
   const [showSyntaxGuide, setShowSyntaxGuide] = useState(false); // 構文ガイドの表示状態
+  const [showRenameModal, setShowRenameModal] = useState(false); // 名前変更モーダルの表示状態
+  const [newFileName, setNewFileName] = useState(""); // 新しいファイル名
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // 未保存の変更があるか
 
   /**
    * ファイルIDが変更されたときにファイルを読み込む
@@ -74,12 +79,13 @@ export default function EditorScreen() {
   /**
    * コンテンツが変更されたときに自動保存を実行
    * 1秒のディレイ後に保存を実行（デバウンス処理）
+   * ちらつきを防ぐため、保存が開始されるまで"saved"のままにする
    */
   useEffect(() => {
     if (!file) return;
 
-    // 変更を検知したら未保存状態に設定
-    setSaveStatus("unsaved");
+    // 未保存の変更があることを記録
+    setHasUnsavedChanges(true);
 
     // 1秒後に自動保存
     const timer = setTimeout(async () => {
@@ -88,6 +94,7 @@ export default function EditorScreen() {
         setSaveStatus("saving");
         await updateFileContent(file.id, content);
         setSaveStatus("saved");
+        setHasUnsavedChanges(false);
       } catch (error) {
         console.error("Failed to save:", error);
         setSaveStatus("unsaved");
@@ -148,6 +155,38 @@ export default function EditorScreen() {
     }
   };
 
+  /**
+   * ファイル名変更モーダルを開く
+   */
+  const handleRenameStart = () => {
+    if (!file) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setNewFileName(file.name);
+    setShowRenameModal(true);
+  };
+
+  /**
+   * ファイル名を変更（モーダルで確認後）
+   */
+  const handleRenameConfirm = async () => {
+    if (!file || !newFileName.trim()) {
+      Alert.alert(t("common.error"), t("editor.renameError"));
+      return;
+    }
+
+    try {
+      const renamedFile = await renameFile(file.id, newFileName);
+      if (renamedFile) {
+        setFile(renamedFile);
+        setShowRenameModal(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      Alert.alert(t("common.error"), t("editor.renameError"));
+      console.error("Rename failed:", error);
+    }
+  };
+
   // ローディング中またはファイルが存在しない場合はローディング表示
   if (filesLoading || !file) {
     return (
@@ -162,14 +201,13 @@ export default function EditorScreen() {
    * @returns 保存状態の色
    */
   const getSaveStatusColor = () => {
-    switch (saveStatus) {
-      case "saved":
-        return colors.success;
-      case "saving":
-        return colors.warning;
-      case "unsaved":
-        return colors.error;
+    if (isSaving || saveStatus === "saving") {
+      return colors.warning;
     }
+    if (saveStatus === "unsaved" || (hasUnsavedChanges && saveStatus !== "saved")) {
+      return colors.error;
+    }
+    return colors.success;
   };
 
   /**
@@ -177,40 +215,46 @@ export default function EditorScreen() {
    * @returns 保存状態のテキスト
    */
   const getSaveStatusText = () => {
-    switch (saveStatus) {
-      case "saved":
-        return t("common.saved");
-      case "saving":
-        return t("common.saving");
-      case "unsaved":
-        return t("common.unsaved");
+    if (isSaving || saveStatus === "saving") {
+      return t("common.saving");
     }
+    if (saveStatus === "unsaved" || (hasUnsavedChanges && saveStatus !== "saved")) {
+      return t("common.unsaved");
+    }
+    return t("common.saved");
   };
 
   return (
-    <ScreenContainer className="bg-background" edges={["top", "left", "right", "bottom"]}>
-      <View className="flex-1">
+    <ScreenContainer className="bg-background" edges={["top", "left", "right", "bottom"]} testID="editor-screen">
+      <View className="flex-1" testID="editor-container">
         {/* ヘッダー */}
-        <View className="px-4 py-3 border-b border-border flex-row items-center justify-between">
-          <TouchableOpacity onPress={handleGoBack} className="p-2 -ml-2">
+        <View className="px-4 py-3 border-b border-border flex-row items-center justify-between" testID="editor-header">
+          <TouchableOpacity onPress={handleGoBack} className="p-2 -ml-2" testID="editor-back-button">
             <Text className="text-lg text-primary font-semibold">← {t("common.back")}</Text>
           </TouchableOpacity>
-          <View className="flex-1 mx-2">
-            <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+          <TouchableOpacity
+            onPress={handleRenameStart}
+            onLongPress={handleRenameStart}
+            className="flex-1 mx-2"
+            testID="editor-file-name-container"
+          >
+            <Text className="text-base font-semibold text-foreground" numberOfLines={1} testID="editor-file-name">
               {file.name}
             </Text>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowSyntaxGuide(true)}
             className="px-3 py-2 rounded-lg bg-primary flex-row items-center gap-1"
+            testID="editor-syntax-button"
           >
             <Text className="text-sm">📚</Text>
             <Text className="text-xs font-semibold text-background">{t("editor.syntax")}</Text>
           </TouchableOpacity>
-          <View className="items-end ml-2">
+          <View className="items-end ml-2" testID="editor-save-status-container">
             <Text
               className="text-xs font-medium"
               style={{ color: getSaveStatusColor() }}
+              testID="editor-save-status"
             >
               {getSaveStatusText()}
             </Text>
@@ -218,9 +262,10 @@ export default function EditorScreen() {
         </View>
 
         {/* タブ */}
-        <View className="flex-row border-b border-border bg-surface">
+        <View className="flex-row border-b border-border bg-surface" testID="editor-tabs">
           <Pressable
             onPress={() => handleTabChange("editor")}
+            testID="editor-tab-editor"
             style={({ pressed }) => [
               styles.tab,
               {
@@ -240,6 +285,7 @@ export default function EditorScreen() {
           </Pressable>
           <Pressable
             onPress={() => handleTabChange("preview")}
+            testID="editor-tab-preview"
             style={({ pressed }) => [
               styles.tab,
               {
@@ -260,7 +306,7 @@ export default function EditorScreen() {
         </View>
 
         {/* コンテンツ */}
-        <View className="flex-1">
+        <View className="flex-1" testID="editor-content">
           {activeTab === "editor" ? (
             <TextInput
               value={content}
@@ -274,22 +320,24 @@ export default function EditorScreen() {
                 fontFamily: "monospace",
                 textAlignVertical: "top",
               }}
+              testID="editor-text-input"
             />
           ) : (
-            <MarkdownPreview content={content} className="flex-1" />
+            <MarkdownPreview content={content} className="flex-1" testID="editor-preview" />
           )}
         </View>
 
         {/* ボトムアクションバー */}
-        <View className="px-4 py-3 border-t border-border flex-row gap-2">
+        <View className="px-4 py-3 border-t border-border flex-row gap-2" testID="editor-bottom-actions">
           <TouchableOpacity
             onPress={() => setShowDownloadMenu(!showDownloadMenu)}
             disabled={downloading}
             className="flex-1 bg-primary rounded-lg py-3 items-center justify-center"
             activeOpacity={0.8}
+            testID="editor-download-button"
           >
             {downloading ? (
-              <ActivityIndicator color={colors.background} />
+              <ActivityIndicator color={colors.background} testID="editor-download-loading" />
             ) : (
               <Text className="text-base font-semibold text-background">{t("editor.download")}</Text>
             )}
@@ -300,21 +348,75 @@ export default function EditorScreen() {
         <MarkdownSyntaxGuide
           visible={showSyntaxGuide}
           onClose={() => setShowSyntaxGuide(false)}
+          testID="editor-syntax-guide"
         />
+
+        {/* ファイル名変更モーダル */}
+        <Modal
+          visible={showRenameModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowRenameModal(false)}
+          testID="editor-rename-modal"
+        >
+          <View
+            className="flex-1 items-center justify-center"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+            testID="editor-rename-modal-backdrop"
+          >
+            <View
+              className="w-80 rounded-lg p-6 gap-4"
+              style={{ backgroundColor: colors.surface }}
+              testID="editor-rename-modal-content"
+            >
+              <Text className="text-lg font-bold text-foreground" testID="editor-rename-modal-title">{t("editor.renameTitle")}</Text>
+
+              <TextInput
+                value={newFileName}
+                onChangeText={setNewFileName}
+                placeholder={t("editor.renamePlaceholder")}
+                placeholderTextColor={colors.muted}
+                className="px-4 py-2 rounded-lg text-base text-foreground border border-border"
+                style={{ borderColor: colors.border, borderWidth: 1 }}
+                testID="editor-rename-modal-input"
+              />
+
+              <View className="flex-row gap-3" testID="editor-rename-modal-actions">
+                <TouchableOpacity
+                  onPress={() => setShowRenameModal(false)}
+                  className="flex-1 py-3 rounded-lg border border-border items-center"
+                  testID="editor-rename-modal-cancel"
+                >
+                  <Text className="font-semibold text-foreground">{t("common.cancel")}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleRenameConfirm}
+                  className="flex-1 py-3 rounded-lg items-center"
+                  style={{ backgroundColor: colors.primary }}
+                  testID="editor-rename-modal-confirm"
+                >
+                  <Text className="font-semibold text-background">{t("common.confirm")}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* ダウンロードメニュー */}
         {showDownloadMenu && (
-          <View className="px-4 pb-3 gap-2 bg-surface border-t border-border max-h-96">
-            <ScrollView>
+          <View className="px-4 pb-3 gap-2 bg-surface border-t border-border max-h-96" testID="editor-download-menu">
+            <ScrollView testID="editor-download-menu-scroll">
               {/* Markdown形式 */}
-              <View className="mb-3">
-                <Text className="text-sm font-semibold text-foreground mb-2">{t("editor.downloadMarkdown")}</Text>
+              <View className="mb-3" testID="editor-download-markdown-section">
+                <Text className="text-sm font-semibold text-foreground mb-2" testID="editor-download-markdown-title">{t("editor.downloadMarkdown")}</Text>
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => handleDownload("markdown", "local")}
                     disabled={downloading}
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
+                    testID="editor-download-markdown-local"
                   >
                     <Text className="text-xs font-semibold text-foreground text-center">{t("editor.localSave")}</Text>
                   </TouchableOpacity>
@@ -323,6 +425,7 @@ export default function EditorScreen() {
                     disabled={downloading}
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
+                    testID="editor-download-markdown-share"
                   >
                     <Text className="text-xs font-semibold text-foreground text-center">{t("editor.share")}</Text>
                   </TouchableOpacity>
@@ -330,14 +433,15 @@ export default function EditorScreen() {
               </View>
 
               {/* HTML形式 */}
-              <View className="mb-3">
-                <Text className="text-sm font-semibold text-foreground mb-2">{t("editor.downloadHTML")}</Text>
+              <View className="mb-3" testID="editor-download-html-section">
+                <Text className="text-sm font-semibold text-foreground mb-2" testID="editor-download-html-title">{t("editor.downloadHTML")}</Text>
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => handleDownload("html", "local")}
                     disabled={downloading}
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
+                    testID="editor-download-html-local"
                   >
                     <Text className="text-xs font-semibold text-foreground text-center">{t("editor.localSave")}</Text>
                   </TouchableOpacity>
@@ -346,6 +450,7 @@ export default function EditorScreen() {
                     disabled={downloading}
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
+                    testID="editor-download-html-share"
                   >
                     <Text className="text-xs font-semibold text-foreground text-center">{t("editor.share")}</Text>
                   </TouchableOpacity>
@@ -353,14 +458,15 @@ export default function EditorScreen() {
               </View>
 
               {/* テキスト形式 */}
-              <View>
-                <Text className="text-sm font-semibold text-foreground mb-2">{t("editor.downloadText")}</Text>
+              <View testID="editor-download-text-section">
+                <Text className="text-sm font-semibold text-foreground mb-2" testID="editor-download-text-title">{t("editor.downloadText")}</Text>
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => handleDownload("text", "local")}
                     disabled={downloading}
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
+                    testID="editor-download-text-local"
                   >
                     <Text className="text-xs font-semibold text-foreground text-center">{t("editor.localSave")}</Text>
                   </TouchableOpacity>
@@ -369,6 +475,7 @@ export default function EditorScreen() {
                     disabled={downloading}
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
+                    testID="editor-download-text-share"
                   >
                     <Text className="text-xs font-semibold text-foreground text-center">{t("editor.share")}</Text>
                   </TouchableOpacity>
