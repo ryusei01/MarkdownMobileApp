@@ -1,21 +1,42 @@
+/**
+ * Markdownプレビューコンポーネント
+ * MarkdownテキストをパースしてReact Nativeのコンポーネントに変換して表示
+ */
+
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 import { cn } from "@/lib/utils";
 import { useColors } from "@/hooks/use-colors";
 
+/**
+ * MarkdownPreviewコンポーネントのプロパティ
+ */
 interface MarkdownPreviewProps {
-  content: string;
-  className?: string;
+  content: string; // 表示するMarkdownコンテンツ
+  className?: string; // 追加のCSSクラス名
 }
 
 /**
- * シンプルな Markdown プレビューコンポーネント
- * 基本的な Markdown 構文をレンダリング
+ * Markdownプレビューコンポーネント
+ * 基本的なMarkdown構文（見出し、太字、イタリック、リスト、コードブロックなど）をレンダリング
+ * @param content - 表示するMarkdownテキスト
+ * @param className - 追加のスタイルクラス
  */
 export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
   const colors = useColors();
 
-  // シンプルな Markdown パーサー
+  /**
+   * MarkdownテキストをパースしてReact要素の配列に変換
+   * サポートする構文:
+   * - 見出し (# ## ###)
+   * - 太字 (**text** または __text__)
+   * - イタリック (*text* または _text_)
+   * - リスト (- または *)
+   * - コードブロック (```...```)
+   * - インラインコード (`code`)
+   * @param text - パースするMarkdownテキスト
+   * @returns React要素の配列
+   */
   const parseMarkdown = (text: string) => {
     const lines = text.split("\n");
     const elements: React.ReactNode[] = [];

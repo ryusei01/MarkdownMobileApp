@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>フィーチャーグラフィック生成</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      canvas {
+        border: 1px solid #ddd;
+        background: white;
+        display: block;
+        margin: 20px auto;
+      }
+      .controls {
+        text-align: center;
+        margin: 20px 0;
+      }
+      button {
+        padding: 12px 24px;
+        font-size: 16px;
+        background: #007aff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 0 10px;
+      }
+      button:hover {
+        background: #0051d5;
+      }
+      .info {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="info">
+        <h1>フィーチャーグラフィック生成ツール</h1>
+        <p>
+          Google Play Store用のフィーチャーグラフィック（1024 x
+          500px）を生成します。
+        </p>
+        <p>生成された画像を右クリックして保存してください。</p>
+      </div>
+
+      <div class="controls">
+        <button onclick="selectIcon()">アイコン画像を選択（オプション）</button>
+        <button onclick="generateGraphic()">画像を生成</button>
+        <button onclick="downloadImage()">画像をダウンロード</button>
+      </div>
+
+      <canvas id="canvas" width="1024" height="500"></canvas>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // アイコン画像を読み込む（既存のアイコンを使用）
+      const iconImg = new Image();
+      // ローカルファイルとして読み込むため、FileReader APIを使用するか、または画像なしで生成
+      // HTMLファイルを開いた後に画像ファイルをドラッグ&ドロップで読み込む機能を追加
+      let iconLoaded = false;
+
+      // ファイル入力でアイコンを読み込む
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/*";
+      fileInput.style.display = "none";
+      fileInput.onchange = function (e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            iconImg.src = event.target.result;
+            iconLoaded = true;
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      document.body.appendChild(fileInput);
+
+      iconImg.onerror = function () {
+        console.warn(
+          "アイコン画像の読み込みに失敗しました。テキストのみで生成します。"
+        );
+        iconLoaded = false;
+        generateGraphic();
+      };
+
+      iconImg.onload = function () {
+        iconLoaded = true;
+        generateGraphic();
+      };
+
+      // アイコンファイル選択ボタンを追加
+      function selectIcon() {
+        fileInput.click();
+      }
+
+      function generateGraphic() {
+        const width = 1024;
+        const height = 500;
+
+        // 背景グラデーション（アプリのテーマカラーに合わせる）
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, "#E6F4FE"); // ライトブルー
+        gradient.addColorStop(1, "#B3E5FC"); // 少し濃いブルー
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // 中央にアイコンを配置
+        if (iconLoaded && iconImg.complete && iconImg.naturalWidth > 0) {
+          const iconSize = 200;
+          const iconX = 120; // 左側に適切な余白を確保
+          const iconY = (height - iconSize) / 2;
+
+          // アイコンの影
+          ctx.shadowColor = "rgba(0, 0, 0, 0.1)";
+          ctx.shadowBlur = 20;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 4;
+
+          ctx.drawImage(iconImg, iconX, iconY, iconSize, iconSize);
+
+          // 影の設定をリセット
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+
+        // アプリ名
+        ctx.fillStyle = "#1976D2";
+        ctx.font = "bold 72px system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const appName = "Markdown Editor";
+        const iconSize = 200;
+        const iconX = 120;
+        const textX = iconX + iconSize + 60; // アイコンの右側に適切な間隔を確保
+        const textY = height / 2 - 40;
+        ctx.fillText(appName, textX, textY);
+
+        // サブタイトル
+        ctx.fillStyle = "#424242";
+        ctx.font = "32px system-ui, -apple-system, sans-serif";
+        const subtitle = "美しく、シンプルなMarkdownエディタ";
+        ctx.fillText(subtitle, textX, textY + 80);
+
+        // 装飾的な要素（Markdownの記号をモチーフに）
+        ctx.strokeStyle = "#64B5F6";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+
+        // 左側に装飾的な線
+        ctx.beginPath();
+        ctx.moveTo(50, 100);
+        ctx.lineTo(50, 400);
+        ctx.stroke();
+
+        // 右側に装飾的な線
+        ctx.beginPath();
+        ctx.moveTo(width - 50, 100);
+        ctx.lineTo(width - 50, 400);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+      }
+
+      function downloadImage() {
+        const link = document.createElement("a");
+        link.download = "feature-graphic.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      }
+
+      // 初期生成（アイコンなしで）
+      generateGraphic();
+    </script>
+  </body>
+</html>

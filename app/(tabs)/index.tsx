@@ -1,3 +1,8 @@
+/**
+ * ホーム画面コンポーネント
+ * Markdownファイルの一覧表示、作成、削除、名前変更機能を提供
+ */
+
 import {
   ScrollView,
   Text,
@@ -14,23 +19,38 @@ import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useMarkdownFiles } from "@/hooks/use-markdown-files";
 import { useColors } from "@/hooks/use-colors";
+import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
 
+/**
+ * ホーム画面
+ * - ファイル一覧の表示
+ * - ファイルの検索機能
+ * - ファイルの作成、削除、名前変更
+ * - エディタ画面への遷移
+ */
 export default function HomeScreen() {
+  // ナビゲーションとスタイル
   const router = useRouter();
   const colors = useColors();
+  const { t, language } = useLanguage();
   const { files, createFile, deleteFile, renameFile } = useMarkdownFiles();
 
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [showRenameModal, setShowRenameModal] = useState(false);
-  const [newFileName, setNewFileName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  // 状態管理
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null); // 選択中のファイルID（名前変更用）
+  const [showRenameModal, setShowRenameModal] = useState(false); // 名前変更モーダルの表示状態
+  const [newFileName, setNewFileName] = useState(""); // 新しいファイル名
+  const [searchQuery, setSearchQuery] = useState(""); // 検索クエリ
 
-  // ファイルを作成
+  /**
+   * 新しいファイルを作成してエディタ画面に遷移
+   * タイムスタンプを含むファイル名を自動生成
+   */
   const handleCreateFile = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const timestamp = new Date().toLocaleString("ja-JP", {
+    const locale = language === "ja" ? "ja-JP" : "en-US";
+    const timestamp = new Date().toLocaleString(locale, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -38,28 +58,35 @@ export default function HomeScreen() {
       minute: "2-digit",
     });
 
-    const newFile = await createFile(`新規ファイル_${timestamp}.md`);
+    const newFile = await createFile(`${t("home.newFilePrefix")}${timestamp}.md`);
     if (newFile) {
       router.push({ pathname: "/editor", params: { fileId: newFile.id } });
     }
   };
 
-  // ファイルを開く
+  /**
+   * ファイルを開く（エディタ画面に遷移）
+   * @param fileId - 開くファイルのID
+   */
   const handleOpenFile = (fileId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: "/editor", params: { fileId } });
   };
 
-  // ファイルを削除
+  /**
+   * ファイルを削除（確認ダイアログを表示）
+   * @param fileId - 削除するファイルのID
+   * @param fileName - 削除するファイルの名前（表示用）
+   */
   const handleDeleteFile = (fileId: string, fileName: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      "ファイルを削除しますか？",
-      `"${fileName}" を削除します。この操作は取り消せません。`,
+      t("home.deleteConfirmTitle"),
+      t("home.deleteConfirmMessage", { fileName }),
       [
-        { text: "キャンセル", onPress: () => {}, style: "cancel" },
+        { text: t("common.cancel"), onPress: () => {}, style: "cancel" },
         {
-          text: "削除",
+          text: t("common.delete"),
           onPress: async () => {
             await deleteFile(fileId);
             setSelectedFileId(null);
@@ -71,7 +98,11 @@ export default function HomeScreen() {
     );
   };
 
-  // ファイル名変更を開始
+  /**
+   * ファイル名変更モーダルを開く
+   * @param fileId - 名前を変更するファイルのID
+   * @param currentName - 現在のファイル名
+   */
   const handleRenameStart = (fileId: string, currentName: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedFileId(fileId);
@@ -79,10 +110,12 @@ export default function HomeScreen() {
     setShowRenameModal(true);
   };
 
-  // ファイル名を変更
+  /**
+   * ファイル名を変更（モーダルで確認後）
+   */
   const handleRenameConfirm = async () => {
     if (!selectedFileId || !newFileName.trim()) {
-      Alert.alert("エラー", "ファイル名を入力してください");
+      Alert.alert(t("common.error"), t("editor.renameError"));
       return;
     }
 
@@ -92,20 +125,31 @@ export default function HomeScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  // 設定画面を開く
+  /**
+   * 設定画面に遷移
+   */
   const handleOpenSettings = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push("/settings");
   };
 
-  // フィルタリング
+  /**
+   * 検索クエリでファイルをフィルタリング
+   * ファイル名の大文字小文字を区別しない検索
+   */
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ファイルアイテムをレンダリング
+  /**
+   * ファイルリストアイテムをレンダリング
+   * - タップでファイルを開く
+   * - 長押しで名前変更モーダルを開く
+   * - 削除ボタンでファイルを削除
+   */
   const renderFileItem = ({ item }: { item: typeof files[0] }) => {
-    const formattedDate = new Date(item.updatedAt).toLocaleString("ja-JP", {
+    const locale = language === "ja" ? "ja-JP" : "en-US";
+    const formattedDate = new Date(item.updatedAt).toLocaleString(locale, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -148,7 +192,7 @@ export default function HomeScreen() {
     <ScreenContainer className="bg-background">
       {/* ヘッダー */}
       <View className="px-4 py-4 border-b border-border flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-foreground">Markdown Editor</Text>
+        <Text className="text-2xl font-bold text-foreground">{t("home.title")}</Text>
         <TouchableOpacity onPress={handleOpenSettings} className="p-2">
           <Text className="text-2xl">⚙️</Text>
         </TouchableOpacity>
@@ -159,7 +203,7 @@ export default function HomeScreen() {
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="ファイルを検索..."
+          placeholder={t("home.searchPlaceholder")}
           placeholderTextColor={colors.muted}
           className="bg-surface px-4 py-2 rounded-lg text-base text-foreground"
           style={{ borderColor: colors.border, borderWidth: 1 }}
@@ -171,9 +215,9 @@ export default function HomeScreen() {
         {filteredFiles.length === 0 ? (
           <View className="flex-1 items-center justify-center gap-3">
             <Text className="text-4xl">📝</Text>
-            <Text className="text-lg font-semibold text-foreground">ファイルがまだありません</Text>
+            <Text className="text-lg font-semibold text-foreground">{t("home.noFiles")}</Text>
             <Text className="text-sm text-muted text-center">
-              下の「+ 新規作成」ボタンをタップして、新しいMarkdownファイルを作成してください。
+              {t("home.noFilesDescription")}
             </Text>
           </View>
         ) : (
@@ -193,7 +237,7 @@ export default function HomeScreen() {
           onPress={handleCreateFile}
           className="bg-primary rounded-full py-4 items-center justify-center active:opacity-80"
         >
-          <Text className="text-lg font-semibold text-background">+ 新規作成</Text>
+          <Text className="text-lg font-semibold text-background">{t("home.createNew")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -212,12 +256,12 @@ export default function HomeScreen() {
             className="w-80 rounded-lg p-6 gap-4"
             style={{ backgroundColor: colors.surface }}
           >
-            <Text className="text-lg font-bold text-foreground">ファイル名を変更</Text>
+            <Text className="text-lg font-bold text-foreground">{t("editor.renameTitle")}</Text>
 
             <TextInput
               value={newFileName}
               onChangeText={setNewFileName}
-              placeholder="新しいファイル名"
+              placeholder={t("editor.renamePlaceholder")}
               placeholderTextColor={colors.muted}
               className="px-4 py-2 rounded-lg text-base text-foreground border border-border"
               style={{ borderColor: colors.border, borderWidth: 1 }}
@@ -228,7 +272,7 @@ export default function HomeScreen() {
                 onPress={() => setShowRenameModal(false)}
                 className="flex-1 py-3 rounded-lg border border-border items-center"
               >
-                <Text className="font-semibold text-foreground">キャンセル</Text>
+                <Text className="font-semibold text-foreground">{t("common.cancel")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -236,7 +280,7 @@ export default function HomeScreen() {
                 className="flex-1 py-3 rounded-lg items-center"
                 style={{ backgroundColor: colors.primary }}
               >
-                <Text className="font-semibold text-background">変更</Text>
+                <Text className="font-semibold text-background">{t("common.confirm")}</Text>
               </TouchableOpacity>
             </View>
           </View>

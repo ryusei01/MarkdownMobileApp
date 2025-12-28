@@ -1,26 +1,40 @@
+/**
+ * Markdownファイル管理フック
+ * AsyncStorageを使用してローカルストレージにファイルを保存・管理
+ */
+
 import { useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+/**
+ * Markdownファイルのデータ構造
+ */
 export interface MarkdownFile {
-  id: string;
-  name: string;
-  content: string;
-  createdAt: number;
-  updatedAt: number;
+  id: string; // ファイルの一意なID
+  name: string; // ファイル名
+  content: string; // ファイルの内容（Markdownテキスト）
+  createdAt: number; // 作成日時（タイムスタンプ）
+  updatedAt: number; // 更新日時（タイムスタンプ）
 }
 
+// AsyncStorageのキー
 const STORAGE_KEY = "markdown_files";
 
 /**
- * Markdown ファイルの管理フック
- * AsyncStorage を使用してローカルにファイルを保存
+ * Markdownファイルの管理フック
+ * AsyncStorageを使用してローカルにファイルを保存
+ * @returns ファイル一覧、読み込み状態、CRUD操作関数
  */
 export function useMarkdownFiles() {
-  const [files, setFiles] = useState<MarkdownFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 状態管理
+  const [files, setFiles] = useState<MarkdownFile[]>([]); // ファイル一覧
+  const [loading, setLoading] = useState(true); // 読み込み中フラグ
+  const [error, setError] = useState<string | null>(null); // エラーメッセージ
 
-  // ファイル一覧を読み込む
+  /**
+   * AsyncStorageからファイル一覧を読み込む
+   * 更新日時の降順でソート
+   */
   const loadFiles = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,12 +54,16 @@ export function useMarkdownFiles() {
     }
   }, []);
 
-  // 初期読み込み
+  // コンポーネントマウント時にファイル一覧を読み込む
   useEffect(() => {
     loadFiles();
   }, [loadFiles]);
 
-  // ファイルを保存
+  /**
+   * ファイルを保存（新規作成または更新）
+   * @param file - 保存するファイルオブジェクト
+   * @returns 保存したファイルオブジェクト
+   */
   const saveFile = useCallback(
     async (file: MarkdownFile) => {
       try {
@@ -66,7 +84,11 @@ export function useMarkdownFiles() {
     [files]
   );
 
-  // 新規ファイルを作成
+  /**
+   * 新規ファイルを作成
+   * @param name - ファイル名
+   * @returns 作成したファイルオブジェクト
+   */
   const createFile = useCallback(
     async (name: string) => {
       const now = Date.now();
@@ -82,7 +104,10 @@ export function useMarkdownFiles() {
     [saveFile]
   );
 
-  // ファイルを削除
+  /**
+   * ファイルを削除
+   * @param id - 削除するファイルのID
+   */
   const deleteFile = useCallback(
     async (id: string) => {
       try {
@@ -98,7 +123,12 @@ export function useMarkdownFiles() {
     [files]
   );
 
-  // ファイル名を変更
+  /**
+   * ファイル名を変更
+   * @param id - ファイルのID
+   * @param newName - 新しいファイル名
+   * @returns 更新したファイルオブジェクト
+   */
   const renameFile = useCallback(
     async (id: string, newName: string) => {
       const file = files.find((f) => f.id === id);
@@ -108,7 +138,12 @@ export function useMarkdownFiles() {
     [files, saveFile]
   );
 
-  // ファイルの内容を更新
+  /**
+   * ファイルの内容を更新
+   * @param id - ファイルのID
+   * @param content - 新しいコンテンツ
+   * @returns 更新したファイルオブジェクト
+   */
   const updateFileContent = useCallback(
     async (id: string, content: string) => {
       const file = files.find((f) => f.id === id);
@@ -118,7 +153,11 @@ export function useMarkdownFiles() {
     [files, saveFile]
   );
 
-  // ファイルを ID で取得
+  /**
+   * ファイルをIDで取得
+   * @param id - ファイルのID
+   * @returns ファイルオブジェクト（見つからない場合はundefined）
+   */
   const getFile = useCallback(
     (id: string) => {
       return files.find((f) => f.id === id);

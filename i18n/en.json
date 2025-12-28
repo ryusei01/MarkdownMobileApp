@@ -1,0 +1,73 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "save": "Save",
+    "saved": "Saved",
+    "saving": "Saving...",
+    "unsaved": "Unsaved",
+    "error": "Error",
+    "success": "Success",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "Markdown Editor",
+    "searchPlaceholder": "Search files...",
+    "noFiles": "No files yet",
+    "noFilesDescription": "Tap the \"+ Create New\" button below to create a new Markdown file.",
+    "createNew": "+ Create New",
+    "deleteConfirmTitle": "Delete file?",
+    "deleteConfirmMessage": "Delete \"{{fileName}}\". This action cannot be undone.",
+    "newFilePrefix": "New File_"
+  },
+  "editor": {
+    "title": "Editor",
+    "preview": "Preview",
+    "syntax": "Syntax",
+    "placeholder": "Enter Markdown here...",
+    "download": "⬇ Download",
+    "downloadMarkdown": "Markdown Format",
+    "downloadHTML": "HTML Format",
+    "downloadText": "Text Format",
+    "localSave": "💾 Local Save",
+    "share": "📤 Share",
+    "downloadSuccess": "{{format}} format {{method}} completed",
+    "downloadError": "Download failed",
+    "renameTitle": "Rename File",
+    "renamePlaceholder": "New file name",
+    "renameError": "Please enter a file name"
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "lightMode": "☀️ Light Mode",
+    "darkMode": "🌙 Dark Mode",
+    "autoMode": "🔄 Auto",
+    "autoModeDescription": "Auto (System Settings)",
+    "fontSize": "Font Size",
+    "currentFontSize": "Current: {{size}}px",
+    "fontSizeRange": "Adjustable from 12px to 20px",
+    "language": "Language",
+    "japanese": "🇯🇵 Japanese",
+    "english": "🇺🇸 English",
+    "appInfo": "App Information",
+    "appName": "App Name",
+    "appNameValue": "Markdown Editor",
+    "version": "Version",
+    "versionValue": "1.0.0",
+    "description": "Description",
+    "descriptionValue": "A simple and easy-to-use Markdown editor. Supports real-time preview, cloud sync, and downloads in multiple formats."
+  },
+  "languageSelect": {
+    "title": "Select your language",
+    "subtitle": "言語を選択してください",
+    "japanese": "Japanese",
+    "english": "English",
+    "continue": "Continue"
+  }
+}
+
+
+

@@ -1,0 +1,73 @@
+{
+  "common": {
+    "back": "戻る",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "delete": "削除",
+    "save": "保存",
+    "saved": "保存済み",
+    "saving": "保存中...",
+    "unsaved": "未保存",
+    "error": "エラー",
+    "success": "成功",
+    "settings": "設定"
+  },
+  "home": {
+    "title": "Markdown Editor",
+    "searchPlaceholder": "ファイルを検索...",
+    "noFiles": "ファイルがまだありません",
+    "noFilesDescription": "下の「+ 新規作成」ボタンをタップして、新しいMarkdownファイルを作成してください。",
+    "createNew": "+ 新規作成",
+    "deleteConfirmTitle": "ファイルを削除しますか？",
+    "deleteConfirmMessage": "\"{{fileName}}\" を削除します。この操作は取り消せません。",
+    "newFilePrefix": "新規ファイル_"
+  },
+  "editor": {
+    "title": "エディタ",
+    "preview": "プレビュー",
+    "syntax": "構文",
+    "placeholder": "Markdownを入力してください...",
+    "download": "⬇ ダウンロード",
+    "downloadMarkdown": "Markdown形式",
+    "downloadHTML": "HTML形式",
+    "downloadText": "テキスト形式",
+    "localSave": "💾 ローカル保存",
+    "share": "📤 共有",
+    "downloadSuccess": "{{format}}形式で{{method}}しました",
+    "downloadError": "ダウンロードに失敗しました",
+    "renameTitle": "ファイル名を変更",
+    "renamePlaceholder": "新しいファイル名",
+    "renameError": "ファイル名を入力してください"
+  },
+  "settings": {
+    "title": "設定",
+    "theme": "テーマ",
+    "lightMode": "☀️ ライトモード",
+    "darkMode": "🌙 ダークモード",
+    "autoMode": "🔄 自動",
+    "autoModeDescription": "自動（システム設定）",
+    "fontSize": "フォントサイズ",
+    "currentFontSize": "現在: {{size}}px",
+    "fontSizeRange": "12px - 20px の範囲で調整できます",
+    "language": "言語",
+    "japanese": "🇯🇵 日本語",
+    "english": "🇺🇸 English",
+    "appInfo": "アプリ情報",
+    "appName": "アプリ名",
+    "appNameValue": "Markdown Editor",
+    "version": "バージョン",
+    "versionValue": "1.0.0",
+    "description": "説明",
+    "descriptionValue": "シンプルで使いやすいMarkdownエディタです。リアルタイムプレビュー、クラウド同期、複数の形式でのダウンロードに対応しています。"
+  },
+  "languageSelect": {
+    "title": "言語を選択してください",
+    "subtitle": "Select your language",
+    "japanese": "日本語",
+    "english": "English",
+    "continue": "続ける"
+  }
+}
+
+
+

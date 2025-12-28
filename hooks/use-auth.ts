@@ -1,25 +1,47 @@
+/**
+ * 認証管理フック
+ * Webとネイティブプラットフォームで異なる認証方式をサポート
+ * - Web: クッキーベースの認証
+ * - Native: トークンベースの認証
+ */
+
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 
+/**
+ * useAuthフックのオプション
+ */
 type UseAuthOptions = {
-  autoFetch?: boolean;
+  autoFetch?: boolean; // 自動的にユーザー情報を取得するかどうか
 };
 
+/**
+ * 認証状態を管理するカスタムフック
+ * @param options - フックのオプション
+ * @returns 認証状態とユーザー情報、ログアウト関数
+ */
 export function useAuth(options?: UseAuthOptions) {
   const { autoFetch = true } = options ?? {};
-  const [user, setUser] = useState<Auth.User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  
+  // 状態管理
+  const [user, setUser] = useState<Auth.User | null>(null); // 現在のユーザー情報
+  const [loading, setLoading] = useState(true); // 読み込み中フラグ
+  const [error, setError] = useState<Error | null>(null); // エラー情報
 
+  /**
+   * ユーザー情報を取得
+   * Web: APIから直接取得（クッキー認証）
+   * Native: セッショントークンを確認してキャッシュされたユーザー情報を使用
+   */
   const fetchUser = useCallback(async () => {
     console.log("[useAuth] fetchUser called");
     try {
       setLoading(true);
       setError(null);
 
-      // Web platform: use cookie-based auth, fetch user from API
+      // Webプラットフォーム: クッキーベースの認証を使用し、APIからユーザー情報を取得
       if (Platform.OS === "web") {
         console.log("[useAuth] Web platform: fetching user from API...");
         const apiUser = await Api.getMe();
@@ -35,7 +57,7 @@ export function useAuth(options?: UseAuthOptions) {
             lastSignedIn: new Date(apiUser.lastSignedIn),
           };
           setUser(userInfo);
-          // Cache user info in localStorage for faster subsequent loads
+          // 次回の読み込みを高速化するため、ユーザー情報をlocalStorageにキャッシュ
           await Auth.setUserInfo(userInfo);
           console.log("[useAuth] Web user set from API:", userInfo);
         } else {
@@ -46,7 +68,7 @@ export function useAuth(options?: UseAuthOptions) {
         return;
       }
 
-      // Native platform: use token-based auth
+      // ネイティブプラットフォーム: トークンベースの認証を使用
       console.log("[useAuth] Native platform: checking for session token...");
       const sessionToken = await Auth.getSessionToken();
       console.log(
@@ -59,7 +81,7 @@ export function useAuth(options?: UseAuthOptions) {
         return;
       }
 
-      // Use cached user info for native (token validates the session)
+      // ネイティブではキャッシュされたユーザー情報を使用（トークンがセッションを検証）
       const cachedUser = await Auth.getUserInfo();
       console.log("[useAuth] Cached user:", cachedUser);
       if (cachedUser) {
@@ -80,6 +102,10 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, []);
 
+  /**
+   * ログアウト処理
+   * APIを呼び出してセッションを無効化し、ローカルのトークンとユーザー情報をクリア
+   */
   const logout = useCallback(async () => {
     try {
       await Api.logout();
@@ -94,8 +120,14 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, []);
 
+  // 認証済みかどうかを判定
   const isAuthenticated = useMemo(() => Boolean(user), [user]);
 
+  /**
+   * 初期化時にユーザー情報を自動取得（オプション）
+   * Web: APIから直接取得
+   * Native: キャッシュされたユーザー情報を最初に表示し、必要に応じて取得
+   */
   useEffect(() => {
     console.log("[useAuth] useEffect triggered, autoFetch:", autoFetch, "platform:", Platform.OS);
     if (autoFetch) {

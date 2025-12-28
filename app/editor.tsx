@@ -1,3 +1,8 @@
+/**
+ * Markdownエディタ画面コンポーネント
+ * エディタとプレビューの切り替え、自動保存、ダウンロード機能を提供
+ */
+
 import {
   View,
   Text,
@@ -17,27 +22,44 @@ import { MarkdownSyntaxGuide } from "@/components/markdown-syntax-guide";
 import { useMarkdownFiles, type MarkdownFile } from "@/hooks/use-markdown-files";
 import { useMarkdownDownload } from "@/hooks/use-markdown-download";
 import { useColors } from "@/hooks/use-colors";
+import { useLanguage } from "@/lib/language-provider";
 import * as Haptics from "expo-haptics";
 
+// タブタイプ（エディタまたはプレビュー）
 type TabType = "editor" | "preview";
 
+/**
+ * エディタ画面
+ * - Markdownの編集機能
+ * - リアルタイムプレビュー
+ * - 自動保存（1秒後に保存）
+ * - 複数形式でのダウンロード（Markdown、HTML、テキスト）
+ * - マークダウン構文ガイド
+ */
 export default function EditorScreen() {
+  // ナビゲーションとパラメータ
   const router = useRouter();
-  const { fileId } = useLocalSearchParams<{ fileId: string }>();
+  const { fileId } = useLocalSearchParams<{ fileId: string }>(); // URLパラメータからファイルIDを取得
   const colors = useColors();
+  const { t } = useLanguage();
+  
+  // カスタムフック
   const { getFile, updateFileContent, loading: filesLoading } = useMarkdownFiles();
   const { downloadAsMarkdown, downloadAsHTML, downloadAsText, downloading } =
     useMarkdownDownload();
 
-  const [file, setFile] = useState<MarkdownFile | null>(null);
-  const [content, setContent] = useState("");
-  const [activeTab, setActiveTab] = useState<TabType>("editor");
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved" | "saving">("saved");
-  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
-  const [showSyntaxGuide, setShowSyntaxGuide] = useState(false);
+  // 状態管理
+  const [file, setFile] = useState<MarkdownFile | null>(null); // 現在編集中のファイル
+  const [content, setContent] = useState(""); // エディタのコンテンツ
+  const [activeTab, setActiveTab] = useState<TabType>("editor"); // アクティブなタブ（エディタ/プレビュー）
+  const [isSaving, setIsSaving] = useState(false); // 保存中のフラグ
+  const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved" | "saving">("saved"); // 保存状態
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false); // ダウンロードメニューの表示状態
+  const [showSyntaxGuide, setShowSyntaxGuide] = useState(false); // 構文ガイドの表示状態
 
-  // ファイルを読み込む
+  /**
+   * ファイルIDが変更されたときにファイルを読み込む
+   */
   useEffect(() => {
     if (fileId) {
       const loadedFile = getFile(fileId);
@@ -49,12 +71,17 @@ export default function EditorScreen() {
     }
   }, [fileId, getFile]);
 
-  // コンテンツが変更されたときの自動保存
+  /**
+   * コンテンツが変更されたときに自動保存を実行
+   * 1秒のディレイ後に保存を実行（デバウンス処理）
+   */
   useEffect(() => {
     if (!file) return;
 
+    // 変更を検知したら未保存状態に設定
     setSaveStatus("unsaved");
 
+    // 1秒後に自動保存
     const timer = setTimeout(async () => {
       try {
         setIsSaving(true);
@@ -69,19 +96,32 @@ export default function EditorScreen() {
       }
     }, 1000); // 1秒後に自動保存
 
+    // クリーンアップ: タイマーをクリア
     return () => clearTimeout(timer);
   }, [content, file, updateFileContent]);
 
+  /**
+   * 前の画面に戻る
+   */
   const handleGoBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
 
+  /**
+   * タブを切り替え（エディタ/プレビュー）
+   * @param tab - 切り替えるタブ
+   */
   const handleTabChange = (tab: TabType) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveTab(tab);
   };
 
+  /**
+   * ファイルをダウンロード
+   * @param format - ダウンロード形式（markdown/html/text）
+   * @param method - ダウンロード方法（share/local）
+   */
   const handleDownload = async (format: "markdown" | "html" | "text", method: "share" | "local") => {
     if (!file) return;
 
@@ -99,15 +139,16 @@ export default function EditorScreen() {
         await downloadAsText(fileName, content, method);
       }
 
-      const methodLabel = method === "share" ? "共有" : "ローカル保存";
-      const formatLabel = format === "markdown" ? "Markdown" : format === "html" ? "HTML" : "テキスト";
-      Alert.alert("成功", `${formatLabel}形式で${methodLabel}しました`);
+      const methodLabel = method === "share" ? t("editor.share") : t("editor.localSave");
+      const formatLabel = format === "markdown" ? t("editor.downloadMarkdown") : format === "html" ? t("editor.downloadHTML") : t("editor.downloadText");
+      Alert.alert(t("common.success"), t("editor.downloadSuccess", { format: formatLabel, method: methodLabel }));
     } catch (error) {
-      Alert.alert("エラー", "ダウンロードに失敗しました");
+      Alert.alert(t("common.error"), t("editor.downloadError"));
       console.error("Download failed:", error);
     }
   };
 
+  // ローディング中またはファイルが存在しない場合はローディング表示
   if (filesLoading || !file) {
     return (
       <ScreenContainer className="items-center justify-center">
@@ -116,6 +157,10 @@ export default function EditorScreen() {
     );
   }
 
+  /**
+   * 保存状態に応じた色を取得
+   * @returns 保存状態の色
+   */
   const getSaveStatusColor = () => {
     switch (saveStatus) {
       case "saved":
@@ -127,14 +172,18 @@ export default function EditorScreen() {
     }
   };
 
+  /**
+   * 保存状態に応じたテキストを取得
+   * @returns 保存状態のテキスト
+   */
   const getSaveStatusText = () => {
     switch (saveStatus) {
       case "saved":
-        return "保存済み";
+        return t("common.saved");
       case "saving":
-        return "保存中...";
+        return t("common.saving");
       case "unsaved":
-        return "未保存";
+        return t("common.unsaved");
     }
   };
 
@@ -144,7 +193,7 @@ export default function EditorScreen() {
         {/* ヘッダー */}
         <View className="px-4 py-3 border-b border-border flex-row items-center justify-between">
           <TouchableOpacity onPress={handleGoBack} className="p-2 -ml-2">
-            <Text className="text-lg text-primary font-semibold">← 戻る</Text>
+            <Text className="text-lg text-primary font-semibold">← {t("common.back")}</Text>
           </TouchableOpacity>
           <View className="flex-1 mx-2">
             <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
@@ -156,7 +205,7 @@ export default function EditorScreen() {
             className="px-3 py-2 rounded-lg bg-primary flex-row items-center gap-1"
           >
             <Text className="text-sm">📚</Text>
-            <Text className="text-xs font-semibold text-background">構文</Text>
+            <Text className="text-xs font-semibold text-background">{t("editor.syntax")}</Text>
           </TouchableOpacity>
           <View className="items-end ml-2">
             <Text
@@ -186,7 +235,7 @@ export default function EditorScreen() {
                 activeTab === "editor" ? "text-primary" : "text-muted"
               }`}
             >
-              エディタ
+              {t("editor.title")}
             </Text>
           </Pressable>
           <Pressable
@@ -205,7 +254,7 @@ export default function EditorScreen() {
                 activeTab === "preview" ? "text-primary" : "text-muted"
               }`}
             >
-              プレビュー
+              {t("editor.preview")}
             </Text>
           </Pressable>
         </View>
@@ -216,7 +265,7 @@ export default function EditorScreen() {
             <TextInput
               value={content}
               onChangeText={setContent}
-              placeholder="Markdownを入力してください..."
+              placeholder={t("editor.placeholder")}
               placeholderTextColor={colors.muted}
               multiline
               scrollEnabled
@@ -242,7 +291,7 @@ export default function EditorScreen() {
             {downloading ? (
               <ActivityIndicator color={colors.background} />
             ) : (
-              <Text className="text-base font-semibold text-background">⬇ ダウンロード</Text>
+              <Text className="text-base font-semibold text-background">{t("editor.download")}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -259,7 +308,7 @@ export default function EditorScreen() {
             <ScrollView>
               {/* Markdown形式 */}
               <View className="mb-3">
-                <Text className="text-sm font-semibold text-foreground mb-2">Markdown形式</Text>
+                <Text className="text-sm font-semibold text-foreground mb-2">{t("editor.downloadMarkdown")}</Text>
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => handleDownload("markdown", "local")}
@@ -267,7 +316,7 @@ export default function EditorScreen() {
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
                   >
-                    <Text className="text-xs font-semibold text-foreground text-center">💾 ローカル保存</Text>
+                    <Text className="text-xs font-semibold text-foreground text-center">{t("editor.localSave")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDownload("markdown", "share")}
@@ -275,14 +324,14 @@ export default function EditorScreen() {
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
                   >
-                    <Text className="text-xs font-semibold text-foreground text-center">📤 共有</Text>
+                    <Text className="text-xs font-semibold text-foreground text-center">{t("editor.share")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* HTML形式 */}
               <View className="mb-3">
-                <Text className="text-sm font-semibold text-foreground mb-2">HTML形式</Text>
+                <Text className="text-sm font-semibold text-foreground mb-2">{t("editor.downloadHTML")}</Text>
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => handleDownload("html", "local")}
@@ -290,7 +339,7 @@ export default function EditorScreen() {
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
                   >
-                    <Text className="text-xs font-semibold text-foreground text-center">💾 ローカル保存</Text>
+                    <Text className="text-xs font-semibold text-foreground text-center">{t("editor.localSave")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDownload("html", "share")}
@@ -298,14 +347,14 @@ export default function EditorScreen() {
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
                   >
-                    <Text className="text-xs font-semibold text-foreground text-center">📤 共有</Text>
+                    <Text className="text-xs font-semibold text-foreground text-center">{t("editor.share")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* テキスト形式 */}
               <View>
-                <Text className="text-sm font-semibold text-foreground mb-2">テキスト形式</Text>
+                <Text className="text-sm font-semibold text-foreground mb-2">{t("editor.downloadText")}</Text>
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => handleDownload("text", "local")}
@@ -313,7 +362,7 @@ export default function EditorScreen() {
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
                   >
-                    <Text className="text-xs font-semibold text-foreground text-center">💾 ローカル保存</Text>
+                    <Text className="text-xs font-semibold text-foreground text-center">{t("editor.localSave")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDownload("text", "share")}
@@ -321,7 +370,7 @@ export default function EditorScreen() {
                     className="flex-1 bg-background border border-border rounded-lg py-2 px-3"
                     activeOpacity={0.7}
                   >
-                    <Text className="text-xs font-semibold text-foreground text-center">📤 共有</Text>
+                    <Text className="text-xs font-semibold text-foreground text-center">{t("editor.share")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

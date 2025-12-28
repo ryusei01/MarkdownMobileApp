@@ -1,16 +1,31 @@
+/**
+ * 認証関連のヘルパー関数
+ * セッショントークンとユーザー情報の保存・取得を管理
+ * - Web: localStorageを使用
+ * - Native: SecureStoreを使用（セキュアなストレージ）
+ */
+
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 
+/**
+ * ユーザー情報の型定義
+ */
 export type User = {
-  id: number;
-  openId: string;
-  name: string | null;
-  email: string | null;
-  loginMethod: string | null;
-  lastSignedIn: Date;
+  id: number; // ユーザーID
+  openId: string; // OAuth OpenID
+  name: string | null; // ユーザー名
+  email: string | null; // メールアドレス
+  loginMethod: string | null; // ログイン方法
+  lastSignedIn: Date; // 最終ログイン日時
 };
 
+/**
+ * セッショントークンを取得
+ * Webプラットフォームではクッキーベースの認証を使用するため、nullを返す
+ * @returns セッショントークン（存在しない場合はnull）
+ */
 export async function getSessionToken(): Promise<string | null> {
   try {
     // Web platform uses cookie-based auth, no manual token management needed
@@ -33,6 +48,11 @@ export async function getSessionToken(): Promise<string | null> {
   }
 }
 
+/**
+ * セッショントークンを保存
+ * Webプラットフォームではクッキーベースの認証を使用するため、何もしない
+ * @param token - 保存するセッショントークン
+ */
 export async function setSessionToken(token: string): Promise<void> {
   try {
     // Web platform uses cookie-based auth, no manual token management needed
@@ -51,6 +71,10 @@ export async function setSessionToken(token: string): Promise<void> {
   }
 }
 
+/**
+ * セッショントークンを削除
+ * Webプラットフォームではサーバーがクッキーをクリアするため、何もしない
+ */
 export async function removeSessionToken(): Promise<void> {
   try {
     // Web platform uses cookie-based auth, logout is handled by server clearing cookie
@@ -68,6 +92,12 @@ export async function removeSessionToken(): Promise<void> {
   }
 }
 
+/**
+ * ユーザー情報を取得
+ * Web: localStorageから取得
+ * Native: SecureStoreから取得
+ * @returns ユーザー情報（存在しない場合はnull）
+ */
 export async function getUserInfo(): Promise<User | null> {
   try {
     console.log("[Auth] Getting user info...");
@@ -94,6 +124,12 @@ export async function getUserInfo(): Promise<User | null> {
   }
 }
 
+/**
+ * ユーザー情報を保存
+ * Web: localStorageに保存
+ * Native: SecureStoreに保存
+ * @param user - 保存するユーザー情報
+ */
 export async function setUserInfo(user: User): Promise<void> {
   try {
     console.log("[Auth] Setting user info...", user);
