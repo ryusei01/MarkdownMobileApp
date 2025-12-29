@@ -3,9 +3,13 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
+// Vercelのビルド環境やCI環境では、forceWriteFileSystemをfalseに設定
+// これにより、仮想モジュールを使用してキャッシュファイルの生成問題を回避
+const isCI = process.env.CI === "true" || process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+
 module.exports = withNativeWind(config, {
   input: "./global.css",
-  // Force write CSS to file system instead of virtual modules
-  // This fixes iOS styling issues in development mode
-  forceWriteFileSystem: true,
+  // CI環境（Vercelなど）では仮想モジュールを使用してキャッシュファイルの問題を回避
+  // ローカル開発環境ではファイルシステムに書き込んでiOSの問題を回避
+  forceWriteFileSystem: !isCI,
 });
