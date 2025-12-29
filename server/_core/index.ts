@@ -30,18 +30,37 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
+  // Enable CORS for all routes
+  // 環境変数で許可するoriginを指定可能（カンマ区切り）
+  // 指定がない場合は、リクエストのoriginをそのまま許可（開発環境用）
   app.use((req, res, next) => {
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) || [];
     const origin = req.headers.origin;
-    if (origin) {
-      res.header("Access-Control-Allow-Origin", origin);
+
+    // 許可されたoriginがある場合、それを使用
+    if (allowedOrigins.length > 0) {
+      if (origin && allowedOrigins.includes(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+        res.header("Access-Control-Allow-Credentials", "true");
+      }
+      // 許可リストがあっても、originがない場合は何も設定しない（サーバー間通信）
+    } else {
+      // 許可リストがない場合は、リクエストのoriginをそのまま許可（開発環境用）
+      // これにより、すべてのoriginからのリクエストを許可
+      if (origin) {
+        res.header("Access-Control-Allow-Origin", origin);
+        res.header("Access-Control-Allow-Credentials", "true");
+      } else {
+        // originがない場合（サーバー間通信）は、ワイルドカードを使用（credentials不可）
+        res.header("Access-Control-Allow-Origin", "*");
+      }
     }
+
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     );
-    res.header("Access-Control-Allow-Credentials", "true");
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {

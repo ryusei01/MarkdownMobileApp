@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm export:web",
+  "buildCommand": "pnpm vercel-build",
   "outputDirectory": "web-build",
   "installCommand": "pnpm install",
   "framework": null,

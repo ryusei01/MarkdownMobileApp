@@ -11,27 +11,12 @@ const APP_DIRECTORY = `${FileSystem.documentDirectory}markdown-files/`;
  * アプリディレクトリを初期化
  */
 export async function initializeAppDirectory(): Promise<void> {
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/file-system-utils.ts:13',message:'initializeAppDirectory entry',data:{appDirectory:APP_DIRECTORY},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
   try {
     const dirInfo = await FileSystem.getInfoAsync(APP_DIRECTORY);
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/file-system-utils.ts:16',message:'getInfoAsync result',data:{exists:dirInfo.exists},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(APP_DIRECTORY, { intermediates: true });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/file-system-utils.ts:18',message:'makeDirectoryAsync success',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/file-system-utils.ts:21',message:'initializeAppDirectory success',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/file-system-utils.ts:23',message:'initializeAppDirectory error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     console.error("Failed to initialize app directory:", error);
   }
 }

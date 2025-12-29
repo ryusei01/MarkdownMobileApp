@@ -23,32 +23,17 @@ export function useLanguageSettings() {
 
   // 設定を読み込む
   const loadSettings = useCallback(async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks/use-language-settings.ts:25',message:'loadSettings entry',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     try {
       setLoading(true);
       const data = await AsyncStorage.getItem(STORAGE_KEY);
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks/use-language-settings.ts:29',message:'AsyncStorage.getItem result',data:{hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       if (data) {
         const parsedSettings = JSON.parse(data) as LanguageSettings;
         setSettings(parsedSettings);
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks/use-language-settings.ts:32',message:'Settings parsed and set',data:{hasSelectedLanguage:parsedSettings.hasSelectedLanguage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
       }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks/use-language-settings.ts:35',message:'loadSettings error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       console.error("Failed to load language settings:", error);
     } finally {
       setLoading(false);
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/bfa86673-045b-4235-9277-216d30ed66a5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks/use-language-settings.ts:38',message:'loadSettings complete',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
     }
   }, []);
 
