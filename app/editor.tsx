@@ -63,7 +63,6 @@ export default function EditorScreen() {
   const [showSyntaxGuide, setShowSyntaxGuide] = useState(false); // 構文ガイドの表示状態
   const [showRenameModal, setShowRenameModal] = useState(false); // 名前変更モーダルの表示状態
   const [newFileName, setNewFileName] = useState(""); // 新しいファイル名
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // 未保存の変更があるか
 
   /**
    * ファイルIDが変更されたときにファイルを読み込む
@@ -82,13 +81,19 @@ export default function EditorScreen() {
   /**
    * コンテンツが変更されたときに自動保存を実行
    * 1秒のディレイ後に保存を実行（デバウンス処理）
-   * ちらつきを防ぐため、保存が開始されるまで"saved"のままにする
+   * ちらつきを防ぐため、初期読み込み時は保存処理をスキップ
    */
   useEffect(() => {
     if (!file) return;
+    
+    // ファイル読み込み直後の変更は無視（ちらつき防止）
+    if (content === file.content) {
+      setSaveStatus("saved");
+      return;
+    }
 
-    // 未保存の変更があることを記録
-    setHasUnsavedChanges(true);
+    // 未保存の変更があることを表示
+    setSaveStatus("unsaved");
 
     // 1秒後に自動保存
     const timer = setTimeout(async () => {
@@ -97,7 +102,6 @@ export default function EditorScreen() {
         setSaveStatus("saving");
         await updateFileContent(file.id, content);
         setSaveStatus("saved");
-        setHasUnsavedChanges(false);
       } catch (error) {
         console.error("Failed to save:", error);
         setSaveStatus("unsaved");
@@ -205,10 +209,10 @@ export default function EditorScreen() {
    */
   const getSaveStatusColor = () => {
     if (isSaving || saveStatus === "saving") {
-      return colors.warning;
+      return colors.muted;
     }
-    if (saveStatus === "unsaved" || (hasUnsavedChanges && saveStatus !== "saved")) {
-      return colors.error;
+    if (saveStatus === "unsaved") {
+      return colors.warning;
     }
     return colors.success;
   };
@@ -221,7 +225,7 @@ export default function EditorScreen() {
     if (isSaving || saveStatus === "saving") {
       return t("common.saving");
     }
-    if (saveStatus === "unsaved" || (hasUnsavedChanges && saveStatus !== "saved")) {
+    if (saveStatus === "unsaved") {
       return t("common.unsaved");
     }
     return t("common.saved");
