@@ -13,7 +13,7 @@ import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
  * ユーザー情報の型定義
  */
 export type User = {
-  id: number; // ユーザーID
+  id: number | null; // サーバー割り当て ID（取得直後は null の場合あり）
   openId: string; // OAuth OpenID
   name: string | null; // ユーザー名
   email: string | null; // メールアドレス

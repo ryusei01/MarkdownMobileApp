@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
-import { Platform } from "react-native";
+
+function isAbortError(e: unknown): boolean {
+  return e !== null && typeof e === "object" && (e as { name?: string }).name === "AbortError";
+}
 
 export type DownloadFormat = "markdown" | "pdf" | "html";
 export type DownloadMethod = "download" | "share" | "local";
@@ -14,6 +17,10 @@ export function useMarkdownDownloadWeb() {
   // ファイルをダウンロード
   const downloadFile = useCallback(
     (fileName: string, content: string, mimeType: string = "text/plain") => {
+      if (typeof document === "undefined") {
+        setError("ダウンロードに失敗しました");
+        return false;
+      }
       try {
         setDownloading(true);
         setError(null);
@@ -30,8 +37,8 @@ export function useMarkdownDownloadWeb() {
         link.click();
         document.body.removeChild(link);
 
-        // URL を解放
-        URL.revokeObjectURL(url);
+        // 即 revoke するとブラウザが取得する前に URL が無効化され、ダウンロードできないことがある
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
 
         console.log("File downloaded:", fileName);
         return true;
@@ -70,7 +77,7 @@ export function useMarkdownDownloadWeb() {
         try {
           // navigator.canShare でファイル共有が可能か確認
           const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] });
-          
+
           if (canShareFiles) {
             await navigator.share({
               files: [file],
@@ -80,8 +87,10 @@ export function useMarkdownDownloadWeb() {
             console.log("File shared:", fileName);
             return true;
           }
-        } catch (fileShareError: any) {
-          // ファイル共有が失敗した場合（NotSupportedErrorなど）
+        } catch (fileShareError: unknown) {
+          if (isAbortError(fileShareError)) {
+            throw fileShareError;
+          }
           console.log("ファイル共有がサポートされていません。テキスト共有を試みます。", fileShareError);
         }
 
@@ -99,22 +108,22 @@ export function useMarkdownDownloadWeb() {
           });
           console.log("Content shared as text:", fileName);
           return true;
-        } catch (textShareError: any) {
-          // テキスト共有も失敗した場合は、ダウンロードにフォールバック
-          if (textShareError.name === "AbortError") {
-            // ユーザーがキャンセルした場合はエラーにしない
-            return false;
+        } catch (textShareError: unknown) {
+          if (isAbortError(textShareError)) {
+            throw textShareError;
           }
           console.log("テキスト共有も失敗しました。ダウンロードにフォールバックします。", textShareError);
           const result = downloadFile(fileName, content, mimeType);
           return result;
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== "AbortError") {
+        if (isAbortError(err)) {
+          throw err;
+        }
+        if (err instanceof Error) {
           const errorMsg = err.message;
           setError(errorMsg);
           console.error("Share error:", err);
-          // エラーが発生した場合も、ダウンロードにフォールバック
           try {
             const result = downloadFile(fileName, content, mimeType);
             return result;

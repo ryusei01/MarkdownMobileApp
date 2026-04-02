@@ -8,9 +8,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Pressable,
   StyleSheet,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
@@ -18,7 +19,13 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useThemeSettings } from "@/hooks/use-theme-settings";
 import { useColors } from "@/hooks/use-colors";
 import { useLanguage } from "@/lib/language-provider";
+import { useAuth } from "@/hooks/use-auth";
+import { getWebGoogleLoginUrl } from "@/constants/oauth";
+import { signInWithGoogleNative } from "@/lib/google-native-sign-in";
+import * as Api from "@/lib/_core/api";
+import * as Auth from "@/lib/_core/auth";
 import * as Haptics from "expo-haptics";
+import { useAdFree } from "@/lib/ad-free-context";
 
 /**
  * 設定画面
@@ -31,7 +38,24 @@ export default function SettingsScreen() {
   const colors = useColors();
   const { settings, setFontSize } = useThemeSettings();
   const { t, language, setLanguage } = useLanguage();
+  const { user, isAuthenticated, logout, refresh } = useAuth();
+  const {
+    adFree,
+    iapReady,
+    entitlementsLoading,
+    lifetimeSku,
+    subscriptionSku,
+    lifetimeProduct,
+    subscriptionProduct,
+    purchaseLifetime,
+    purchaseSubscription,
+    restorePurchases,
+    purchaseError,
+    clearPurchaseError,
+  } = useAdFree();
   const [fontSize, setFontSizeLocal] = useState(settings.fontSize);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [iapBusy, setIapBusy] = useState(false);
 
   useEffect(() => {
     setFontSizeLocal(settings.fontSize);
@@ -55,6 +79,52 @@ export default function SettingsScreen() {
     await setLanguage(lang);
   };
 
+  const handleGoogleLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setAuthBusy(true);
+    try {
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined") {
+          window.location.href = getWebGoogleLoginUrl();
+        }
+        return;
+      }
+      const nat = await signInWithGoogleNative();
+      const result = await Api.exchangeGoogleOAuthCode(nat);
+      if (!result.sessionToken) {
+        throw new Error("No session");
+      }
+      await Auth.setSessionToken(result.sessionToken);
+      if (result.user) {
+        const userInfo: Auth.User = {
+          id: result.user.id ?? null,
+          openId: result.user.openId,
+          name: result.user.name,
+          email: result.user.email,
+          loginMethod: result.user.loginMethod ?? "google",
+          lastSignedIn: new Date(result.user.lastSignedIn || Date.now()),
+        };
+        await Auth.setUserInfo(userInfo);
+      }
+      await refresh();
+      router.replace("/(tabs)");
+    } catch (e) {
+      console.error("[settings] Google login failed", e);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setAuthBusy(true);
+    try {
+      await logout();
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   return (
     <ScreenContainer className="bg-background" edges={["top", "left", "right", "bottom"]} testID="settings-screen">
       <View className="flex-1" testID="settings-container">
@@ -68,6 +138,176 @@ export default function SettingsScreen() {
 
         {/* コンテンツ */}
         <ScrollView className="flex-1 px-4 py-4" testID="settings-scroll-view">
+          <View className="mb-6" testID="settings-account-section">
+            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-account-title">
+              {t("settings.account")}
+            </Text>
+            <View
+              className="rounded-lg p-4 border border-border mb-2"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <Text className="text-sm text-muted mb-2">{t("settings.accountDescription")}</Text>
+              {isAuthenticated && user ? (
+                <>
+                  <Text className="text-base text-foreground mb-1">
+                    {user.name || user.email || user.openId}
+                  </Text>
+                  <Text className="text-xs text-muted mb-3">{t("settings.cloudSyncHint")}</Text>
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    disabled={authBusy}
+                    className="bg-border rounded-lg py-3 px-4"
+                    testID="settings-logout-button"
+                  >
+                    <Text className="text-center font-semibold text-foreground">{t("settings.logout")}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleGoogleLogin}
+                  disabled={authBusy}
+                  className="bg-primary rounded-lg py-3 px-4 flex-row items-center justify-center gap-2"
+                  testID="settings-google-login-button"
+                >
+                  {authBusy ? (
+                    <ActivityIndicator color={colors.background} />
+                  ) : (
+                    <Text className="text-center font-semibold text-background">{t("settings.loginWithGoogle")}</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text className="text-xs text-muted leading-5 mb-2">{t("settings.privacyNote")}</Text>
+            <Text className="text-xs text-muted leading-5">{t("settings.subscriptionNote")}</Text>
+          </View>
+
+          {/* 広告オフ（サブスク / 買い切り） */}
+          <View className="mb-6" testID="settings-ad-free-section">
+            <Text className="text-lg font-bold text-foreground mb-3" testID="settings-ad-free-title">
+              {t("settings.adFreeSection")}
+            </Text>
+            {Platform.OS === "web" ? (
+              <Text className="text-sm text-muted leading-5">{t("settings.adFreeMobileOnly")}</Text>
+            ) : adFree ? (
+              <View
+                className="rounded-lg p-4 border border-border"
+                style={{ backgroundColor: colors.surface }}
+              >
+                <Text className="text-base text-foreground">{t("settings.adFreeActive")}</Text>
+              </View>
+            ) : (
+              <View
+                className="rounded-lg p-4 border border-border gap-3"
+                style={{ backgroundColor: colors.surface }}
+              >
+                <Text className="text-sm text-muted leading-5">{t("settings.adFreeDescription")}</Text>
+                {entitlementsLoading || !iapReady ? (
+                  <View className="flex-row items-center gap-2 py-2">
+                    <ActivityIndicator color={colors.primary} />
+                    <Text className="text-sm text-muted">{t("settings.adFreeStoreLoading")}</Text>
+                  </View>
+                ) : (
+                  <>
+                    {subscriptionSku ? (
+                      <View className="gap-2">
+                        <Text className="text-sm font-semibold text-foreground">
+                          {t("settings.adFreeSubscriptionTitle")}
+                          {subscriptionProduct?.displayPrice
+                            ? ` · ${subscriptionProduct.displayPrice}`
+                            : ""}
+                        </Text>
+                        <Text className="text-xs text-muted">{t("settings.adFreeSubscriptionHint")}</Text>
+                        {!subscriptionProduct?.displayPrice ? (
+                          <Text className="text-xs text-muted">{t("settings.adFreeConfigureStore")}</Text>
+                        ) : null}
+                        <TouchableOpacity
+                          onPress={async () => {
+                            if (iapBusy) return;
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            clearPurchaseError();
+                            setIapBusy(true);
+                            try {
+                              await purchaseSubscription();
+                            } finally {
+                              setIapBusy(false);
+                            }
+                          }}
+                          disabled={iapBusy}
+                          className="bg-primary rounded-lg py-3 px-4"
+                          testID="settings-ad-free-subscribe"
+                        >
+                          <Text className="text-center font-semibold text-background">
+                            {t("settings.adFreeSubscribe")}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+                    {lifetimeSku ? (
+                      <View className={`gap-2 ${subscriptionSku ? "pt-2 border-t border-border" : ""}`}>
+                        <Text className="text-sm font-semibold text-foreground">
+                          {t("settings.adFreeLifetimeTitle")}
+                          {lifetimeProduct?.displayPrice ? ` · ${lifetimeProduct.displayPrice}` : ""}
+                        </Text>
+                        <Text className="text-xs text-muted">{t("settings.adFreeLifetimeHint")}</Text>
+                        {subscriptionSku && !lifetimeProduct?.displayPrice ? (
+                          <Text className="text-xs text-muted">{t("settings.adFreeConfigureStore")}</Text>
+                        ) : null}
+                        {!subscriptionSku && !lifetimeProduct?.displayPrice ? (
+                          <Text className="text-xs text-muted">{t("settings.adFreeConfigureStore")}</Text>
+                        ) : null}
+                        <TouchableOpacity
+                          onPress={async () => {
+                            if (iapBusy) return;
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            clearPurchaseError();
+                            setIapBusy(true);
+                            try {
+                              await purchaseLifetime();
+                            } finally {
+                              setIapBusy(false);
+                            }
+                          }}
+                          disabled={iapBusy}
+                          className="bg-primary rounded-lg py-3 px-4 opacity-95"
+                          testID="settings-ad-free-lifetime"
+                        >
+                          <Text className="text-center font-semibold text-background">
+                            {t("settings.adFreeBuyLifetime")}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+                    <TouchableOpacity
+                      onPress={async () => {
+                        if (iapBusy) return;
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        clearPurchaseError();
+                        setIapBusy(true);
+                        try {
+                          await restorePurchases();
+                        } finally {
+                          setIapBusy(false);
+                        }
+                      }}
+                      disabled={iapBusy}
+                      className="border border-border rounded-lg py-3 px-4"
+                      testID="settings-ad-free-restore"
+                    >
+                      <Text className="text-center font-semibold text-foreground">
+                        {t("settings.adFreeRestore")}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+                {purchaseError ? (
+                  <Text className="text-sm" style={{ color: "#dc2626" }} testID="settings-ad-free-error">
+                    {purchaseError}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+          </View>
+
           {/* 言語設定セクション */}
           <View className="mb-6" testID="settings-language-section">
             <Text className="text-lg font-bold text-foreground mb-3" testID="settings-language-title">{t("settings.language")}</Text>

@@ -1,10 +1,12 @@
+import { BottomTabBar, type BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { AdaptiveBanner } from "@/components/adaptive-banner";
 
 export default function TabLayout() {
   const colors = useColors();
@@ -14,6 +16,12 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props: BottomTabBarProps) => (
+        <View style={{ backgroundColor: colors.background }}>
+          <AdaptiveBanner />
+          <BottomTabBar {...props} />
+        </View>
+      )}
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
         headerShown: false,

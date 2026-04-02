@@ -26,6 +26,8 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+import { AdFreeProvider } from "@/lib/ad-free-context";
+import { initMobileAds } from "@/components/adaptive-banner";
 
 // Webプラットフォーム用のデフォルト値（SafeAreaの初期値として使用）
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -87,6 +89,10 @@ function RootLayoutInner() {
     }
   }, []);
 
+  useEffect(() => {
+    initMobileAds();
+  }, []);
+
   // SafeAreaの更新ハンドラ（Webプラットフォーム用）
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
     setInsets(metrics.insets);
@@ -141,7 +147,7 @@ function RootLayoutInner() {
 
   // メインコンテンツ（すべてのプロバイダーでラップ）
   const content = (
-    <GestureHandlerRootView style={{ flex: 1 }} testID="root-gesture-handler">
+    <GestureHandlerRootView style={{ flex: 1 }}>
       {/* tRPCプロバイダー（型安全なAPI呼び出しを有効化） */}
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         {/* React Queryプロバイダー（サーバーステート管理） */}
@@ -149,7 +155,7 @@ function RootLayoutInner() {
           {/* Expo Routerのスタックナビゲーション */}
           {/* デフォルトでネイティブヘッダーを非表示（ルートセグメントが表示されないようにするため） */}
           {/* ヘッダーが必要な画面では、Stack.Screenのオプションで明示的に有効化 */}
-          <Stack screenOptions={{ headerShown: false }} testID="root-stack-navigator">
+          <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
@@ -165,7 +171,7 @@ function RootLayoutInner() {
 
   if (shouldOverrideSafeArea) {
     return (
-      <SafeAreaProvider initialMetrics={providerInitialMetrics} testID="root-safe-area-provider">
+      <SafeAreaProvider initialMetrics={providerInitialMetrics}>
         <SafeAreaFrameContext.Provider value={frame}>
           <SafeAreaInsetsContext.Provider value={insets}>
             {content}
@@ -176,7 +182,7 @@ function RootLayoutInner() {
   }
 
   return (
-    <SafeAreaProvider initialMetrics={providerInitialMetrics} testID="root-safe-area-provider">{content}</SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
   );
 }
 
@@ -185,9 +191,11 @@ function RootLayoutInner() {
  */
 export default function RootLayout() {
   return (
-    <ThemeProvider testID="root-theme-provider">
-      <LanguageProvider testID="root-language-provider">
-        <RootLayoutContent />
+    <ThemeProvider>
+      <LanguageProvider>
+        <AdFreeProvider>
+          <RootLayoutContent />
+        </AdFreeProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

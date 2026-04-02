@@ -2,6 +2,12 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
 import { getUserByOpenId, upsertUser } from "../db";
 import { getSessionCookieOptions } from "./cookies";
+import {
+  decodeGoogleOAuthState,
+  exchangeGoogleAuthorizationCode,
+  googleOpenId,
+  verifyGoogleIdToken,
+} from "./google-oauth";
 import { sdk } from "./sdk";
 
 function getQueryParam(req: Request, key: string): string | undefined {
@@ -9,35 +15,64 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-async function syncUser(userInfo: {
-  openId?: string | null;
-  name?: string | null;
-  email?: string | null;
-  loginMethod?: string | null;
-  platform?: string | null;
+async function completeGoogleLogin(opts: {
+  code: string;
+  redirectUri: string;
+  clientId: string;
+  codeVerifier?: string;
+  res: Response;
+  req: Request;
+  /** When true, redirect browser to SPA after setting cookie */
+  isWebCallback: boolean;
 }) {
-  if (!userInfo.openId) {
-    throw new Error("openId missing from user info");
+  const { idToken } = await exchangeGoogleAuthorizationCode({
+    code: opts.code,
+    redirectUri: opts.redirectUri,
+    clientId: opts.clientId,
+    codeVerifier: opts.codeVerifier,
+  });
+
+  const profile = await verifyGoogleIdToken(idToken, opts.clientId);
+  const openId = googleOpenId(profile.sub);
+
+  await upsertUser({
+    openId,
+    name: profile.name || null,
+    email: profile.email ?? null,
+    loginMethod: "google",
+    lastSignedIn: new Date(),
+  });
+
+  const user = await getUserByOpenId(openId);
+  const sessionToken = await sdk.createSessionToken(openId, {
+    name: profile.name || "",
+    expiresInMs: ONE_YEAR_MS,
+  });
+
+  const cookieOptions = getSessionCookieOptions(opts.req);
+  opts.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+  if (opts.isWebCallback) {
+    const frontendUrl =
+      process.env.EXPO_WEB_PREVIEW_URL ||
+      process.env.EXPO_PACKAGER_PROXY_URL ||
+      "http://localhost:8081";
+    opts.res.redirect(302, frontendUrl);
+    return;
   }
 
-  const lastSignedIn = new Date();
-  await upsertUser({
-    openId: userInfo.openId,
-    name: userInfo.name || null,
-    email: userInfo.email ?? null,
-    loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-    lastSignedIn,
+  opts.res.json({
+    app_session_id: sessionToken,
+    user: buildUserResponse(
+      user ?? {
+        openId,
+        name: profile.name,
+        email: profile.email,
+        loginMethod: "google",
+        lastSignedIn: new Date(),
+      },
+    ),
   });
-  const saved = await getUserByOpenId(userInfo.openId);
-  return (
-    saved ?? {
-      openId: userInfo.openId,
-      name: userInfo.name,
-      email: userInfo.email,
-      loginMethod: userInfo.loginMethod ?? null,
-      lastSignedIn,
-    }
-  );
 }
 
 function buildUserResponse(
@@ -52,7 +87,7 @@ function buildUserResponse(
       },
 ) {
   return {
-    id: (user as any)?.id ?? null,
+    id: (user as { id?: number })?.id ?? null,
     openId: user?.openId ?? null,
     name: user?.name ?? null,
     email: user?.email ?? null,
@@ -72,59 +107,61 @@ export function registerOAuthRoutes(app: Express) {
     }
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      await syncUser(userInfo);
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
+      const decoded = decodeGoogleOAuthState(state);
+      await completeGoogleLogin({
+        code,
+        redirectUri: decoded.redirectUri,
+        clientId: decoded.clientId,
+        codeVerifier: decoded.codeVerifier,
+        req,
+        res,
+        isWebCallback: true,
       });
-
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      // Redirect to the frontend URL (Expo web on port 8081)
-      // Cookie is set with parent domain so it works across both 3000 and 8081 subdomains
-      const frontendUrl =
-        process.env.EXPO_WEB_PREVIEW_URL ||
-        process.env.EXPO_PACKAGER_PROXY_URL ||
-        "http://localhost:8081";
-      res.redirect(302, frontendUrl);
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
+      console.error("[OAuth] Google callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
     }
   });
 
-  app.get("/api/oauth/mobile", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
-
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
-      return;
-    }
+  app.post("/api/oauth/google/token", async (req: Request, res: Response) => {
+    const body = req.body as {
+      code?: string;
+      redirectUri?: string;
+      clientId?: string;
+      codeVerifier?: string;
+      state?: string;
+    };
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      const user = await syncUser(userInfo);
+      let code = body.code;
+      let redirectUri = body.redirectUri;
+      let clientId = body.clientId;
+      let codeVerifier = body.codeVerifier;
 
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
-      });
+      if (body.state && (!code || !redirectUri || !clientId)) {
+        const decoded = decodeGoogleOAuthState(body.state);
+        redirectUri = redirectUri ?? decoded.redirectUri;
+        clientId = clientId ?? decoded.clientId;
+        codeVerifier = codeVerifier ?? decoded.codeVerifier;
+      }
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      if (!code || !redirectUri || !clientId) {
+        res.status(400).json({ error: "code, redirectUri, and clientId are required" });
+        return;
+      }
 
-      res.json({
-        app_session_id: sessionToken,
-        user: buildUserResponse(user),
+      await completeGoogleLogin({
+        code,
+        redirectUri,
+        clientId,
+        codeVerifier,
+        req,
+        res,
+        isWebCallback: false,
       });
     } catch (error) {
-      console.error("[OAuth] Mobile exchange failed", error);
-      res.status(500).json({ error: "OAuth mobile exchange failed" });
+      console.error("[OAuth] Google token exchange failed", error);
+      res.status(500).json({ error: "OAuth token exchange failed" });
     }
   });
 
@@ -134,7 +171,6 @@ export function registerOAuthRoutes(app: Express) {
     res.json({ success: true });
   });
 
-  // Get current authenticated user - works with both cookie (web) and Bearer token (mobile)
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
       const user = await sdk.authenticateRequest(req);
@@ -145,15 +181,10 @@ export function registerOAuthRoutes(app: Express) {
     }
   });
 
-  // Establish session cookie from Bearer token
-  // Used by iframe preview: frontend receives token via postMessage, then calls this endpoint
-  // to get a proper Set-Cookie response from the backend (3000-xxx domain)
   app.post("/api/auth/session", async (req: Request, res: Response) => {
     try {
-      // Authenticate using Bearer token from Authorization header
       const user = await sdk.authenticateRequest(req);
 
-      // Get the token from the Authorization header to set as cookie
       const authHeader = req.headers.authorization || req.headers.Authorization;
       if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
         res.status(400).json({ error: "Bearer token required" });
@@ -161,7 +192,6 @@ export function registerOAuthRoutes(app: Express) {
       }
       const token = authHeader.slice("Bearer ".length).trim();
 
-      // Set cookie for this domain (3000-xxx)
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 

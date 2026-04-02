@@ -307,6 +307,31 @@ export function useMarkdownFilesWeb() {
     [files]
   );
 
+  const mergeRemoteFiles = useCallback(
+    async (remote: MarkdownFile[]) => {
+      if (!db) return;
+      const map = new Map(files.map((f) => [f.id, f]));
+      for (const r of remote) {
+        const local = map.get(r.id);
+        if (!local || r.updatedAt > local.updatedAt) {
+          map.set(r.id, r);
+        }
+      }
+      const next = Array.from(map.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], "readwrite");
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        const store = transaction.objectStore(STORE_NAME);
+        for (const f of next) {
+          store.put(f);
+        }
+      });
+      setFiles(next);
+    },
+    [db, files],
+  );
+
   return {
     files,
     loading,
@@ -316,5 +341,6 @@ export function useMarkdownFilesWeb() {
     deleteFile,
     renameFile,
     getFile,
+    mergeRemoteFiles,
   };
 }

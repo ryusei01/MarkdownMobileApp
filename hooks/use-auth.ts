@@ -49,7 +49,7 @@ export function useAuth(options?: UseAuthOptions) {
 
         if (apiUser) {
           const userInfo: Auth.User = {
-            id: apiUser.id,
+            id: apiUser.id ?? null,
             openId: apiUser.openId,
             name: apiUser.name,
             email: apiUser.email,
@@ -68,7 +68,6 @@ export function useAuth(options?: UseAuthOptions) {
         return;
       }
 
-      // ネイティブプラットフォーム: トークンベースの認証を使用
       console.log("[useAuth] Native platform: checking for session token...");
       const sessionToken = await Auth.getSessionToken();
       console.log(
@@ -81,14 +80,27 @@ export function useAuth(options?: UseAuthOptions) {
         return;
       }
 
-      // ネイティブではキャッシュされたユーザー情報を使用（トークンがセッションを検証）
+      const apiUser = await Api.getMe();
+      if (apiUser) {
+        const userInfo: Auth.User = {
+          id: apiUser.id,
+          openId: apiUser.openId,
+          name: apiUser.name,
+          email: apiUser.email,
+          loginMethod: apiUser.loginMethod,
+          lastSignedIn: new Date(apiUser.lastSignedIn),
+        };
+        await Auth.setUserInfo(userInfo);
+        setUser(userInfo);
+        console.log("[useAuth] Native user from API:", userInfo);
+        return;
+      }
+
       const cachedUser = await Auth.getUserInfo();
       console.log("[useAuth] Cached user:", cachedUser);
       if (cachedUser) {
-        console.log("[useAuth] Using cached user info");
         setUser(cachedUser);
       } else {
-        console.log("[useAuth] No cached user, setting user to null");
         setUser(null);
       }
     } catch (err) {

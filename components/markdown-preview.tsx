@@ -7,6 +7,7 @@ import React from "react";
 import { ScrollView, Text, View, Image, Linking } from "react-native";
 import { cn } from "@/lib/utils";
 import { useColors, useFontSize } from "@/hooks/use-colors";
+import { parseImageOnlyLine, truncateImageMarkdownLineForDisplay } from "@/lib/markdown-image-display";
 
 /**
  * MarkdownPreviewコンポーネントのプロパティ
@@ -14,6 +15,7 @@ import { useColors, useFontSize } from "@/hooks/use-colors";
 interface MarkdownPreviewProps {
   content: string; // 表示するMarkdownコンテンツ
   className?: string; // 追加のCSSクラス名
+  testID?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ interface MarkdownPreviewProps {
  * @param content - 表示するMarkdownテキスト
  * @param className - 追加のスタイルクラス
  */
-export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
+export function MarkdownPreview({ content, className, testID }: MarkdownPreviewProps) {
   const colors = useColors();
   const fontSize = useFontSize();
 
@@ -32,7 +34,12 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
    * @param keyPrefix - キーのプレフィックス
    * @returns React要素の配列
    */
-  const parseInlineElements = (text: string, keyPrefix: string): React.ReactNode[] => {
+  const parseInlineElements = (
+    text: string,
+    keyPrefix: string,
+    opts?: { compactImage?: boolean },
+  ): React.ReactNode[] => {
+    const compactImage = opts?.compactImage !== false;
     if (!text) return [text];
 
     const elements: React.ReactNode[] = [];
@@ -98,18 +105,18 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
 
     // 打ち消し線を処理（~~text~~）
     const strikethroughRegex = /~~(.+?)~~/g;
-    let strikethroughMatch;
+    let strikethroughMatch: RegExpExecArray | null;
     while ((strikethroughMatch = strikethroughRegex.exec(text)) !== null) {
-      // 太字やコードの一部でないことを確認
+      const mch = strikethroughMatch;
       const isPartOfOther = allMatches.some(
-        (m) => strikethroughMatch.index >= m.index && strikethroughMatch.index < m.index + m.length,
+        (m) => mch.index >= m.index && mch.index < m.index + m.length,
       );
       if (!isPartOfOther) {
         allMatches.push({
           type: "strikethrough",
-          index: strikethroughMatch.index,
-          length: strikethroughMatch[0].length,
-          data: { text: strikethroughMatch[1] },
+          index: mch.index,
+          length: mch[0].length,
+          data: { text: mch[1] },
         });
       }
     }
@@ -117,18 +124,16 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
     // イタリックを処理（*text* または _text_）- 太字でないもの
     // 単一の*または_で囲まれたもの（**で囲まれたものは太字として既に処理済み）
     const italicRegex = /(?<!\*)\*([^*\n]+?)\*(?!\*)|(?<!_)_([^_\n]+?)_(?!_)/g;
-    let italicMatch;
+    let italicMatch: RegExpExecArray | null;
     while ((italicMatch = italicRegex.exec(text)) !== null) {
-      // 太字やコードの一部でないことを確認
-      const isPartOfOther = allMatches.some(
-        (m) => italicMatch.index >= m.index && italicMatch.index < m.index + m.length,
-      );
+      const mch = italicMatch;
+      const isPartOfOther = allMatches.some((m) => mch.index >= m.index && mch.index < m.index + m.length);
       if (!isPartOfOther) {
         allMatches.push({
           type: "italic",
-          index: italicMatch.index,
-          length: italicMatch[0].length,
-          data: { text: italicMatch[1] || italicMatch[2] },
+          index: mch.index,
+          length: mch[0].length,
+          data: { text: mch[1] || mch[2] },
         });
       }
     }
@@ -174,19 +179,20 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
 
       // マッチした要素を追加
       if (match.type === "image") {
-        const { alt, url } = match.data;
+        const { url } = match.data;
         elements.push(
           <View key={`${keyPrefix}-img-${elementIndex}`} testID={`${keyPrefix}-image-${elementIndex}`}>
             <Image
               source={{ uri: url }}
-              style={{ width: "100%", height: 200, resizeMode: "contain", marginVertical: 8 }}
+              style={{
+                width: "100%",
+                maxWidth: 480,
+                height: compactImage ? 140 : 200,
+                resizeMode: "contain",
+                marginVertical: compactImage ? 4 : 8,
+              }}
               className="rounded-lg"
             />
-            {alt && (
-              <Text className="text-xs text-muted text-center mb-2" testID={`${keyPrefix}-image-alt-${elementIndex}`}>
-                {alt}
-              </Text>
-            )}
           </View>
         );
       } else if (match.type === "link") {
@@ -250,6 +256,40 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
     return elements.length > 0 ? elements : [text];
   };
 
+  /** インラインに画像(View)が混ざる行は Text で包めないため View + 折り返しで描画 */
+  const renderRichLineNodes = (
+    line: string,
+    keyPrefix: string,
+    baseTextClass = "text-foreground leading-relaxed",
+    baseTextStyle?: { fontSize?: number },
+  ): React.ReactNode => {
+    const nodes = parseInlineElements(line, keyPrefix, { compactImage: true });
+    const needsView = nodes.some((n) => React.isValidElement(n) && n.type === View);
+    const fs = baseTextStyle?.fontSize ?? fontSize;
+    if (!needsView) {
+      return (
+        <Text className={baseTextClass} style={{ fontSize: fs }} testID={`${keyPrefix}-text-wrap`}>
+          {nodes}
+        </Text>
+      );
+    }
+    return (
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "flex-end" }} testID={`${keyPrefix}-rich-wrap`}>
+        {nodes.map((n, idx) => (
+          <React.Fragment key={`${keyPrefix}-frag-${idx}`}>
+            {typeof n === "string" ? (
+              <Text className={baseTextClass} style={{ fontSize: fs }}>
+                {n}
+              </Text>
+            ) : (
+              n
+            )}
+          </React.Fragment>
+        ))}
+      </View>
+    );
+  };
+
   /**
    * MarkdownテキストをパースしてReact要素の配列に変換
    * サポートする構文:
@@ -288,6 +328,25 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
             style={{ backgroundColor: colors.border }}
             testID={`hr-${i}`}
           />
+        );
+        i++;
+        continue;
+      }
+
+      // 画像だけの行（ブロック表示 + Markdown 一行を学習用に表示）
+      const imageOnly = parseImageOnlyLine(line);
+      if (imageOnly) {
+        elements.push(
+          <View key={`img-only-${i}`} className="mb-3" testID={`img-only-${i}`}>
+            <Image
+              source={{ uri: imageOnly.uri }}
+              style={{ width: "100%", height: 220, resizeMode: "contain", marginVertical: 8 }}
+              className="rounded-lg"
+            />
+            <Text className="text-xs text-muted font-mono mt-2 leading-5" selectable testID={`img-only-md-${i}`}>
+              {truncateImageMarkdownLineForDisplay(imageOnly.raw)}
+            </Text>
+          </View>
         );
         i++;
         continue;
@@ -369,9 +428,14 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
                     className="flex-1 px-2 py-2 border-r border-border last:border-r-0"
                     testID={`table-cell-${i}-${rowIdx}-${cellIdx}`}
                   >
-                    <Text className="text-foreground" style={{ fontSize: fontSize * 0.875 }}>
-                      {parseInlineElements(cell, `table-${i}-${rowIdx}-${cellIdx}`)}
-                    </Text>
+                    <View className="flex-1 justify-center">
+                      {renderRichLineNodes(
+                        cell,
+                        `table-${i}-${rowIdx}-${cellIdx}`,
+                        "text-foreground",
+                        { fontSize: fontSize * 0.875 },
+                      )}
+                    </View>
                   </View>
                 ))}
               </View>
@@ -421,9 +485,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
           elements.push(
             <View key={`checkbox-${i}`} className="flex-row items-start mb-1 pl-4" testID={`checkbox-${i}`}>
               <Text className="text-foreground mr-2" style={{ fontSize }}>{isChecked ? "☑" : "☐"}</Text>
-              <Text className="text-foreground flex-1 leading-relaxed" style={{ fontSize }}>
-                {parseInlineElements(text, `checkbox-${i}`)}
-              </Text>
+              <View className="flex-1">{renderRichLineNodes(text, `checkbox-${i}`, "text-foreground leading-relaxed", { fontSize })}</View>
             </View>
           );
         }
@@ -437,9 +499,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
           elements.push(
             <View key={`ordered-list-${i}`} className="flex-row items-start mb-1 pl-4" testID={`ordered-list-${i}`}>
               <Text className="text-foreground mr-2" style={{ fontSize }}>{number}.</Text>
-              <Text className="text-foreground flex-1 leading-relaxed" style={{ fontSize }}>
-                {parseInlineElements(text, `ordered-list-${i}`)}
-              </Text>
+              <View className="flex-1">{renderRichLineNodes(text, `ordered-list-${i}`, "text-foreground leading-relaxed", { fontSize })}</View>
             </View>
           );
         }
@@ -450,9 +510,7 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         elements.push(
           <View key={`list-${i}`} className="flex-row items-start mb-1 pl-4" testID={`list-${i}`}>
             <Text className="text-foreground mr-2" style={{ fontSize }}>•</Text>
-            <Text className="text-foreground flex-1 leading-relaxed" style={{ fontSize }}>
-              {parseInlineElements(text, `list-${i}`)}
-            </Text>
+            <View className="flex-1">{renderRichLineNodes(text, `list-${i}`, "text-foreground leading-relaxed", { fontSize })}</View>
           </View>
         );
       }
@@ -482,9 +540,9 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
       // 通常のテキスト（インライン要素を含む）
       else if (trimmedLine) {
         elements.push(
-          <Text key={`text-${i}`} className="text-foreground leading-relaxed mb-2" style={{ fontSize }} testID={`text-${i}`}>
-            {parseInlineElements(line, `text-${i}`)}
-          </Text>
+          <View key={`text-${i}`} className="mb-2" testID={`text-${i}`}>
+            {renderRichLineNodes(line, `text-${i}`, "text-foreground leading-relaxed")}
+          </View>
         );
       }
 
@@ -495,8 +553,13 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
   };
 
   return (
-    <ScrollView className={cn("flex-1 bg-background", className)} testID="markdown-preview-scroll">
-      <View className="p-4" testID="markdown-preview-content">{parseMarkdown(content)}</View>
+    <ScrollView
+      className={cn("flex-1 bg-background", className)}
+      testID={testID ? `${testID}-scroll` : "markdown-preview-scroll"}
+    >
+      <View className="p-4" testID={testID ? `${testID}-content` : "markdown-preview-content"}>
+        {parseMarkdown(content)}
+      </View>
     </ScrollView>
   );
 }

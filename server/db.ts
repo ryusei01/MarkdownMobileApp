@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { documents, InsertUser, userEntitlements, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,85 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function listDocumentsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(documents).where(eq(documents.userId, userId));
+}
+
+export async function upsertDocumentForUser(
+  userId: number,
+  input: {
+    id: string;
+    name: string;
+    content: string;
+    clientUpdatedMs: number;
+    clientCreatedMs?: number;
+  },
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+  const created = new Date(input.clientCreatedMs ?? input.clientUpdatedMs);
+  const updated = new Date(input.clientUpdatedMs);
+  await db
+    .insert(documents)
+    .values({
+      userId,
+      id: input.id,
+      name: input.name,
+      content: input.content,
+      version: 1,
+      createdAt: created,
+      updatedAt: updated,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        name: input.name,
+        content: input.content,
+        version: sql`${documents.version} + 1`,
+        updatedAt: updated,
+      },
+    });
+}
+
+export async function deleteDocumentForUser(userId: number, documentId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+  await db
+    .delete(documents)
+    .where(and(eq(documents.userId, userId), eq(documents.id, documentId)));
+}
+
+export async function getUserEntitlement(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select()
+    .from(userEntitlements)
+    .where(eq(userEntitlements.userId, userId))
+    .limit(1);
+  return rows[0];
+}
+
+export async function upsertUserEntitlement(userId: number, proExpiresAt: Date | null) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot upsert entitlement: database not available");
+    return;
+  }
+  await db
+    .insert(userEntitlements)
+    .values({
+      userId,
+      proExpiresAt,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        proExpiresAt,
+      },
+    });
+}

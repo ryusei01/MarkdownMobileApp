@@ -14,9 +14,10 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MarkdownSyntaxGuide } from "@/components/markdown-syntax-guide";
@@ -26,6 +27,8 @@ import { useMarkdownDownloadUniversal } from "@/hooks/use-markdown-download-univ
 import { useColors, useFontSize } from "@/hooks/use-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useLanguage } from "@/lib/language-provider";
+import { normalizeFilePath } from "@/lib/markdown-file-path";
+import { pickImageUriForMarkdown } from "@/lib/editor-image-pick";
 import * as Haptics from "expo-haptics";
 
 // タブタイプ（エディタまたはプレビュー）
@@ -63,6 +66,11 @@ export default function EditorScreen() {
   const [showSyntaxGuide, setShowSyntaxGuide] = useState(false); // 構文ガイドの表示状態
   const [showRenameModal, setShowRenameModal] = useState(false); // 名前変更モーダルの表示状態
   const [newFileName, setNewFileName] = useState(""); // 新しいファイル名
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageAlt, setImageAlt] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageLearnLine, setImageLearnLine] = useState("");
+  const selectionRef = useRef({ start: 0, end: 0 });
 
   /**
    * ファイルIDが変更されたときにファイルを読み込む
@@ -157,6 +165,13 @@ export default function EditorScreen() {
       const formatLabel = format === "markdown" ? t("editor.downloadMarkdown") : format === "html" ? t("editor.downloadHTML") : t("editor.downloadText");
       Alert.alert(t("common.success"), t("editor.downloadSuccess", { format: formatLabel, method: methodLabel }));
     } catch (error) {
+      const aborted =
+        error !== null &&
+        typeof error === "object" &&
+        (error as { name?: string }).name === "AbortError";
+      if (aborted) {
+        return;
+      }
       Alert.alert(t("common.error"), t("editor.downloadError"));
       console.error("Download failed:", error);
     }
@@ -182,7 +197,7 @@ export default function EditorScreen() {
     }
 
     try {
-      const renamedFile = await renameFile(file.id, newFileName);
+      const renamedFile = await renameFile(file.id, normalizeFilePath(newFileName.trim()));
       if (renamedFile) {
         setFile(renamedFile);
         setShowRenameModal(false);
@@ -191,6 +206,58 @@ export default function EditorScreen() {
     } catch (error) {
       Alert.alert(t("common.error"), t("editor.renameError"));
       console.error("Rename failed:", error);
+    }
+  };
+
+  const insertIntoEditor = (snippet: string) => {
+    const { start, end } = selectionRef.current;
+    setContent((prev) => {
+      const safeStart = Math.min(Math.max(0, start), prev.length);
+      const safeEnd = Math.min(Math.max(Math.max(safeStart, end), 0), prev.length);
+      const next = safeStart + snippet.length;
+      selectionRef.current = { start: next, end: next };
+      return prev.slice(0, safeStart) + snippet + prev.slice(safeEnd);
+    });
+  };
+
+  const openImageModal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setImageUrl("");
+    setImageLearnLine("");
+    setShowImageModal(true);
+  };
+
+  const handleInsertImageFromUrl = () => {
+    if (!file) return;
+    const url = imageUrl.trim();
+    if (!url) {
+      Alert.alert(t("common.error"), t("editor.imageUrlLabel"));
+      return;
+    }
+    const alt = imageAlt.trim() || t("editor.imageAltDefault");
+    const line = `![${alt.replace(/]/g, "")}](${url})`;
+    insertIntoEditor(`${line}\n`);
+    setImageLearnLine(line);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleInsertImageFromDevice = async () => {
+    if (!file) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const uri = await pickImageUriForMarkdown(file.id);
+      if (!uri) {
+        Alert.alert(t("common.error"), t("editor.imagePermissionDenied"));
+        return;
+      }
+      const alt = imageAlt.trim() || t("editor.imageAltDefault");
+      const line = `![${alt.replace(/]/g, "")}](${uri})`;
+      insertIntoEditor(`${line}\n`);
+      setImageLearnLine(line);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      console.error(e);
+      Alert.alert(t("common.error"), t("editor.imageInsertError"));
     }
   };
 
@@ -318,6 +385,9 @@ export default function EditorScreen() {
             <TextInput
               value={content}
               onChangeText={setContent}
+              onSelectionChange={(e) => {
+                selectionRef.current = e.nativeEvent.selection;
+              }}
               placeholder={t("editor.placeholder")}
               placeholderTextColor={colors.muted}
               multiline
@@ -350,6 +420,14 @@ export default function EditorScreen() {
               <Text className="text-base font-semibold text-background">{t("editor.download")}</Text>
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={openImageModal}
+            className="flex-1 bg-surface border border-border rounded-lg py-3 items-center justify-center"
+            activeOpacity={0.8}
+            testID="editor-image-button"
+          >
+            <Text className="text-base font-semibold text-foreground">{t("editor.insertImage")}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* 構文ガイドモーダル */}
@@ -358,6 +436,83 @@ export default function EditorScreen() {
           onClose={() => setShowSyntaxGuide(false)}
           testID="editor-syntax-guide"
         />
+
+        <Modal
+          visible={showImageModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowImageModal(false)}
+          testID="editor-image-modal"
+        >
+          <View
+            className="flex-1 items-center justify-center px-3"
+            style={{ backgroundColor: colorScheme === "dark" ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.45)" }}
+          >
+            <View className="w-full max-w-md rounded-xl p-5 gap-3" style={{ backgroundColor: colors.surface, maxHeight: "90%" }}>
+              <Text className="text-lg font-bold text-foreground">{t("editor.imageModalTitle")}</Text>
+
+              <ScrollView keyboardShouldPersistTaps="handled" className="max-h-96">
+                <Text className="text-sm text-muted mb-1">{t("editor.imageAltLabel")}</Text>
+                <TextInput
+                  value={imageAlt}
+                  onChangeText={setImageAlt}
+                  placeholder={t("editor.imageAltDefault")}
+                  placeholderTextColor={colors.muted}
+                  className="px-3 py-2 rounded-lg text-base text-foreground border border-border mb-3"
+                  style={{ borderColor: colors.border, borderWidth: 1 }}
+                />
+
+                <Text className="text-sm text-muted mb-1">{t("editor.imageUrlLabel")}</Text>
+                <TextInput
+                  value={imageUrl}
+                  onChangeText={setImageUrl}
+                  placeholder="https://"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  className="px-3 py-2 rounded-lg text-base text-foreground border border-border mb-3"
+                  style={{ borderColor: colors.border, borderWidth: 1 }}
+                />
+
+                <TouchableOpacity
+                  onPress={handleInsertImageFromUrl}
+                  className="bg-primary py-3 rounded-lg items-center mb-2"
+                  testID="editor-image-insert-url"
+                >
+                  <Text className="font-semibold text-background">{t("editor.imageInsertButton")} (URL)</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleInsertImageFromDevice}
+                  className="bg-background border border-border py-3 rounded-lg items-center mb-3"
+                  testID="editor-image-pick-device"
+                >
+                  <Text className="font-semibold text-foreground">{t("editor.imagePickDevice")}</Text>
+                </TouchableOpacity>
+
+                {Platform.OS !== "web" ? (
+                  <Text className="text-xs text-muted leading-5 mb-2">{t("editor.imageSyncNoteFile")}</Text>
+                ) : null}
+
+                {imageLearnLine ? (
+                  <View className="mt-1 gap-1">
+                    <Text className="text-xs font-semibold text-foreground">{t("editor.imageMarkdownLearnTitle")}</Text>
+                    <Text selectable className="text-xs text-muted font-mono leading-5" testID="editor-image-learn-line">
+                      {imageLearnLine.length > 200 ? `${imageLearnLine.slice(0, 200)}…` : imageLearnLine}
+                    </Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+
+              <TouchableOpacity
+                onPress={() => setShowImageModal(false)}
+                className="py-3 rounded-lg border border-border items-center"
+              >
+                <Text className="font-semibold text-foreground">{t("common.cancel")}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* ファイル名変更モーダル */}
         <Modal

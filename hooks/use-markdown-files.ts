@@ -165,6 +165,22 @@ export function useMarkdownFiles() {
     [files]
   );
 
+  const mergeRemoteFiles = useCallback(
+    async (remote: MarkdownFile[]) => {
+      const map = new Map(files.map((f) => [f.id, f]));
+      for (const r of remote) {
+        const local = map.get(r.id);
+        if (!local || r.updatedAt > local.updatedAt) {
+          map.set(r.id, r);
+        }
+      }
+      const next = Array.from(map.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setFiles(next);
+    },
+    [files]
+  );
+
   return {
     files,
     loading,
@@ -176,5 +192,6 @@ export function useMarkdownFiles() {
     renameFile,
     updateFileContent,
     getFile,
+    mergeRemoteFiles,
   };
 }

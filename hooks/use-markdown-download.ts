@@ -51,10 +51,10 @@ export function useMarkdownDownload() {
         });
 
         if (method === "share") {
-          // 共有ダイアログを表示
+          // 共有ダイアログを表示（text/markdown は Android の送信手先が少ないため text/plain）
           if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(fileUri, {
-              mimeType: "text/markdown",
+              mimeType: "text/plain",
               dialogTitle: "Markdownファイルを共有",
             });
           } else {

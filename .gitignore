@@ -1,15 +1,43 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Learn more: https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# Dependencies
 node_modules/
 
-# Expo
+# Environment (secrets). Commit templates like .env.example only.
+.env
+.env.*
+!.env.example
+
+# Expo / React Native
 .expo/
-dist/
 web-build/
 expo-env.d.ts
+/ios
+/android
 
-# Native
+# Metro
+.metro-health-check*
+
+# Node / bundler outputs & cache
+dist/
+.cache/
+*.tsbuildinfo
+*.tgz
+*.tar.gz
+
+# Vercel (CLI project link & local state)
+.vercel
+
+# Testing
+coverage/
+
+# Package manager logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.log*
+
+# Native tooling & local signing secrets
 .kotlin/
 *.orig.*
 *.jks
@@ -17,30 +45,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
 *.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
 
 # IDE
 .vscode/
@@ -50,13 +55,14 @@ app-example
 *~
 
 # Logs
-logs
+logs/
 *.log
 
 # OS
+.DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Build files
-*.tgz
-*.tar.gz
-.cache/
+# Template / scaffold leftover
+app-example

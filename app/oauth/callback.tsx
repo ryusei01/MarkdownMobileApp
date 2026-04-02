@@ -180,7 +180,10 @@ export default function OAuthCallback() {
           code: code.substring(0, 20) + "...",
           state: state.substring(0, 20) + "...",
         });
-        const result = await Api.exchangeOAuthCode(code, state);
+        const result = await Api.exchangeGoogleOAuthCode({
+          code,
+          state,
+        });
         console.log("[OAuth] Exchange result:", {
           hasSessionToken: !!result.sessionToken,
           hasUser: !!result.user,
